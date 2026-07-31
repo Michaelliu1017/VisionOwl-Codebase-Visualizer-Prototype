@@ -1,0 +1,20 @@
+{
+  "id": "m5-synthetic-monitor",
+  "name": "M5 Synthetic Monitor",
+  "description": "Read-only adapter for the local M5 synthetic monitoring loop and its online UModel-shaped demo.",
+  "mocked": false,
+  "capabilities": [
+    "runtime-topology",
+    "runtime-events",
+    "entity-details",
+    "incident-focus",
+    "code-hints"
+  ],
+  "codeHints": {
+    "taskcenter": ["smartalibench-taskcenter-rest"],
+    "worker": ["smartalibench-worker"],
+    "agent-rest": ["smartalibench-agent-rest"],
+    "probe-idc": ["GoProbe", "cmsprobe"],
+    "probe-pc": ["GoProbe", "cmsprobe"]
+  }
+}

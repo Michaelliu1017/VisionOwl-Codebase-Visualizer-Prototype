@@ -1,0 +1,4 @@
+interface:
+  display_name: "Graph Layout"
+  short_description: "Clear grouped graphs with ELK and edge aggregation"
+  default_prompt: "Use $graph-layout to redesign this dependency graph for minimal crossings and readable relationships."

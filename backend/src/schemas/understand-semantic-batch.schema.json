@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["nodes", "edges"],
+  "properties": {
+    "nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "summary", "tags", "complexity", "languageNotes"],
+        "properties": {
+          "id": { "type": "string" },
+          "summary": { "type": "string" },
+          "tags": {
+            "type": "array",
+            "items": { "type": "string" },
+            "maxItems": 6
+          },
+          "complexity": {
+            "type": "string",
+            "enum": ["simple", "moderate", "complex"]
+          },
+          "languageNotes": {
+            "type": ["string", "null"]
+          }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "source",
+          "target",
+          "type",
+          "direction",
+          "weight",
+          "description"
+        ],
+        "properties": {
+          "source": { "type": "string" },
+          "target": { "type": "string" },
+          "type": {
+            "type": "string",
+            "enum": [
+              "calls",
+              "inherits",
+              "implements",
+              "depends_on",
+              "tested_by",
+              "configures",
+              "documents",
+              "deploys",
+              "migrates",
+              "triggers",
+              "defines_schema",
+              "serves",
+              "provisions",
+              "routes",
+              "related"
+            ]
+          },
+          "direction": {
+            "type": "string",
+            "enum": ["forward", "backward", "bidirectional"]
+          },
+          "weight": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "description": { "type": "string" }
+        }
+      }
+    }
+  }
+}

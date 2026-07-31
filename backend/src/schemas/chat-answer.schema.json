@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "conclusion",
+    "purpose",
+    "callChain",
+    "facts",
+    "inferences",
+    "notes",
+    "citations"
+  ],
+  "properties": {
+    "conclusion": {
+      "type": "string"
+    },
+    "purpose": {
+      "type": "string"
+    },
+    "callChain": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 8
+    },
+    "facts": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 6
+    },
+    "inferences": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 3
+    },
+    "notes": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 3
+    },
+    "citations": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["file", "line", "endLine", "symbol", "excerpt"],
+        "properties": {
+          "file": {
+            "type": "string"
+          },
+          "line": {
+            "type": ["integer", "null"]
+          },
+          "endLine": {
+            "type": ["integer", "null"]
+          },
+          "symbol": {
+            "type": ["string", "null"]
+          },
+          "excerpt": {
+            "type": ["string", "null"]
+          }
+        }
+      }
+    }
+  }
+}
