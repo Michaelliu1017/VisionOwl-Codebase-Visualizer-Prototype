@@ -1,5 +1,8 @@
 import {
   FolderCode,
+  Bug,
+  Check,
+  FilePenLine,
   GitBranch,
   LoaderCircle,
   Plus,
@@ -20,10 +23,11 @@ import type {
   EntityScope,
   GraphVersion,
   Project,
+  ProjectAutomationSettings,
 } from "@visionowl/contracts";
 import { projectDocumentOwnerId } from "@visionowl/contracts";
 import { AnalysisProgress } from "./AnalysisProgress";
-import { CodeChat } from "./CodeChat";
+import { CodeChat, type DocumentUpdateActivity } from "./CodeChat";
 import { CodeGraph } from "./CodeGraph";
 import { CodeInspector } from "./CodeInspector";
 import { GlobalDocumentShelf } from "./GlobalDocumentShelf";
@@ -54,6 +58,14 @@ function scopeFromDomain(domain: CodeDomainLayout): EntityScope {
   };
 }
 
+function commitsMatch(left?: string, right?: string) {
+  if (!left || !right) return true;
+  if (!/^[0-9a-f]{7,40}$/i.test(left) || !/^[0-9a-f]{7,40}$/i.test(right)) {
+    return true;
+  }
+  return left.startsWith(right) || right.startsWith(left);
+}
+
 export function CodeWorkspace() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectId, setProjectId] = useState<string>();
@@ -77,6 +89,9 @@ export function CodeWorkspace() {
   const [simulationPlaying, setSimulationPlaying] = useState(false);
   const [chatCollapsed, setChatCollapsed] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [automation, setAutomation] = useState<ProjectAutomationSettings>();
+  const [manualDocumentActivity, setManualDocumentActivity] =
+    useState<DocumentUpdateActivity>();
   const [error, setError] = useState("");
 
   const loadProjects = useCallback(async () => {
@@ -114,8 +129,19 @@ export function CodeWorkspace() {
     setDocuments(await visionApi.listDocuments(projectId));
   }, [projectId]);
 
+  const loadAutomation = useCallback(async () => {
+    if (!projectId) {
+      setAutomation(undefined);
+      return;
+    }
+    setAutomation(await visionApi.getAutomation(projectId));
+  }, [projectId]);
+
   const latestJob = jobs[0];
   const analysisRunning = latestJob?.status === "running";
+  const repositoryChanged =
+    Boolean(graph.commit && automation?.currentCommit) &&
+    !commitsMatch(graph.commit, automation?.currentCommit);
 
   useEffect(() => {
     void loadProjects().catch((loadError) => setError(loadError.message));
@@ -129,7 +155,25 @@ export function CodeWorkspace() {
     setActiveFlowId("overview");
     setShowAllDocuments(false);
     void loadProject().catch((loadError) => setError(loadError.message));
-  }, [loadProject, projectId]);
+    void loadAutomation().catch((loadError) => setError(loadError.message));
+  }, [loadAutomation, loadProject, projectId]);
+
+  useEffect(() => {
+    if (!projectId) return;
+    const timer = window.setInterval(() => {
+      void loadAutomation().catch((loadError) => setError(loadError.message));
+    }, automation?.status === "running" ? 850 : 1800);
+    return () => window.clearInterval(timer);
+  }, [automation?.status, loadAutomation, projectId]);
+
+  useEffect(() => {
+    if (!projectId || automation?.status !== "running") return;
+    void loadDocuments().catch((loadError) => setError(loadError.message));
+    const timer = window.setInterval(() => {
+      void loadDocuments().catch((loadError) => setError(loadError.message));
+    }, 750);
+    return () => window.clearInterval(timer);
+  }, [automation?.status, loadDocuments, projectId]);
 
   useEffect(() => {
     if (!projectId || !analysisRunning) return;
@@ -214,6 +258,13 @@ export function CodeWorkspace() {
     });
   }, [loadContext]);
 
+  useEffect(() => {
+    if (!automation?.processedCommit) return;
+    void Promise.all([loadDocuments(), loadContext()]).catch((loadError) =>
+      setError(loadError.message),
+    );
+  }, [automation?.processedCommit, loadContext, loadDocuments]);
+
   const selectedEntity =
     context?.entity ??
     graph.entities.find((entity) => entity.id === selectedId);
@@ -235,6 +286,24 @@ export function CodeWorkspace() {
       ),
     [documents, globalDocumentOwner],
   );
+  const staleDocument = useMemo(
+    () => documents.find((document) => document.syncStatus === "stale"),
+    [documents],
+  );
+  const automaticDocumentActivity: DocumentUpdateActivity | undefined =
+    automation?.status === "running"
+      ? {
+          source: "debug",
+          phase: staleDocument ? "analysis" : "detect",
+          label: automation.message,
+          documentTitle:
+            staleDocument?.title ?? "正在定位本次变更影响的文档",
+          current: staleDocument ? 2 : 1,
+          total: 3,
+        }
+      : undefined;
+  const documentActivity =
+    manualDocumentActivity ?? automaticDocumentActivity;
   const executionFlows = graph.executionFlows ?? [];
   const activeFlow = executionFlows.find((flow) => flow.id === activeFlowId);
   const architectureEntities = useMemo(
@@ -408,6 +477,33 @@ export function CodeWorkspace() {
             <Plus size={14} />
             导入仓库
           </button>
+          <button
+            className={`vision-debug-toggle ${automation?.debugMode ? "is-active" : ""}`}
+            type="button"
+            disabled={!projectId || automation?.status === "running"}
+            title={automation?.message || "监听本地 Commit 并同步模块文档"}
+            onClick={async () => {
+              if (!projectId) return;
+              setBusy(true);
+              setError("");
+              try {
+                setAutomation(
+                  await visionApi.setDebugMode(
+                    projectId,
+                    !automation?.debugMode,
+                  ),
+                );
+              } catch (debugError) {
+                setError((debugError as Error).message);
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            <Bug size={13} />
+            <span>DEBUG</span>
+            <i />
+          </button>
           <span className="feed-status">
             <Wifi size={14} />
             LOCAL ENGINE
@@ -466,9 +562,27 @@ export function CodeWorkspace() {
                   placeholder="搜索模块或路径"
                 />
               </label>
+              {repositoryChanged && !analysisRunning && (
+                <span
+                  className="vision-code-change-alert"
+                  role="status"
+                  aria-live="polite"
+                >
+                  <GitBranch size={13} />
+                  代码已变更，请重新分析
+                </span>
+              )}
               <button
+                className={`vision-reanalyze-button ${
+                  repositoryChanged && !analysisRunning ? "is-stale" : ""
+                }`}
                 type="button"
                 disabled={!projectId || analysisRunning}
+                title={
+                  repositoryChanged
+                    ? "仓库代码已领先于当前图谱"
+                    : "重新分析当前代码仓库"
+                }
                 onClick={async () => {
                   if (!projectId) return;
                   setBusy(true);
@@ -671,8 +785,13 @@ export function CodeWorkspace() {
           projectId={projectId}
           entity={selectedEntity}
           scope={selectedScope}
+          documents={context?.documents ?? []}
           collapsed={chatCollapsed}
           onToggle={() => setChatCollapsed((current) => !current)}
+          onDocumentCreated={() =>
+            void Promise.all([loadContext(), loadDocuments()])
+          }
+          onDocumentActivity={setManualDocumentActivity}
         />
         <CodeInspector
           projectId={projectId}
@@ -683,6 +802,58 @@ export function CodeWorkspace() {
           }
         />
       </section>
+
+      {documentActivity && (
+        <aside
+          className={`vision-document-sync-window is-${documentActivity.source} is-${documentActivity.phase}`}
+          role="status"
+          aria-live="assertive"
+          aria-atomic="true"
+        >
+          <span className="vision-document-sync-window__icon">
+            {documentActivity.phase === "complete" ? (
+              <Check size={18} strokeWidth={2.2} />
+            ) : (
+              <FilePenLine size={18} strokeWidth={1.8} />
+            )}
+          </span>
+          <span className="vision-document-sync-window__content">
+            <small>
+              {documentActivity.source === "debug"
+                ? "DEBUG AUTO DOCUMENT SYNC"
+                : "MODULE DOCUMENT UPDATE"}
+            </small>
+            <strong>{documentActivity.documentTitle}</strong>
+            <span>{documentActivity.label}</span>
+          </span>
+          <span className="vision-document-sync-window__state">
+            {documentActivity.phase === "complete" ? (
+              <Check size={15} />
+            ) : documentActivity.phase === "error" ? (
+              <X size={15} />
+            ) : (
+              <LoaderCircle size={15} className="is-spinning" />
+            )}
+            <small>
+              {Math.min(documentActivity.current, documentActivity.total)}/
+              {documentActivity.total}
+            </small>
+          </span>
+          <span className="vision-document-sync-window__track">
+            <i
+              style={{
+                width: `${Math.max(
+                  8,
+                  Math.min(
+                    100,
+                    (documentActivity.current / documentActivity.total) * 100,
+                  ),
+                )}%`,
+              }}
+            />
+          </span>
+        </aside>
+      )}
 
       {error && (
         <div className="vision-toast is-error">

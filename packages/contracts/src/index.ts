@@ -153,6 +153,48 @@ export type DocumentBinding = {
   updatedAt: ISODateString;
 };
 
+export type DocumentGenerationProgress = {
+  phase: "context" | "analysis" | "publish" | "bind";
+  label: string;
+  detail?: string;
+  current: number;
+  total: number;
+};
+
+export type DocumentGenerationCompletion = {
+  document: DocumentBinding;
+  title: string;
+  summary: string;
+  provider: "dingtalk";
+};
+
+export type DocumentRefreshProgress = {
+  phase: "context" | "read" | "analysis" | "publish";
+  label: string;
+  detail?: string;
+  current: number;
+  total: number;
+};
+
+export type DocumentRefreshCompletion = {
+  documents: DocumentBinding[];
+  checkedDocuments: number;
+  updatedDocuments: number;
+  unchangedDocuments: number;
+};
+
+export type ProjectAutomationSettings = {
+  projectId: string;
+  debugMode: boolean;
+  branch?: string;
+  currentCommit?: string;
+  observedCommit?: string;
+  processedCommit?: string;
+  status: "idle" | "watching" | "running" | "error";
+  message: string;
+  updatedAt: ISODateString;
+};
+
 export type EntityScope = {
   id: string;
   name: string;

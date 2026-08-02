@@ -140,6 +140,18 @@ class VisionStore {
         created_at TEXT NOT NULL,
         FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
       );
+
+      CREATE TABLE IF NOT EXISTS project_automation_settings (
+        project_id TEXT PRIMARY KEY,
+        debug_mode INTEGER NOT NULL DEFAULT 0,
+        branch TEXT,
+        observed_commit TEXT,
+        processed_commit TEXT,
+        status TEXT NOT NULL DEFAULT 'idle',
+        message TEXT NOT NULL DEFAULT '',
+        updated_at TEXT NOT NULL,
+        FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
+      );
     `);
   }
 
@@ -608,6 +620,97 @@ class VisionStore {
       )
       .all(projectId)
       .map(documentFromRow);
+  }
+
+  updateDocumentSync(id, { title, summary, syncStatus, updatedAt } = {}) {
+    const row = this.db.prepare("SELECT * FROM documents WHERE id = ?").get(id);
+    if (!row) return null;
+    const nextUpdatedAt = updatedAt || isoNow();
+    this.db
+      .prepare(
+        `UPDATE documents
+         SET title = ?, summary = ?, sync_status = ?, updated_at = ?
+         WHERE id = ?`,
+      )
+      .run(
+        title || row.title,
+        summary ?? row.summary,
+        syncStatus || row.sync_status,
+        nextUpdatedAt,
+        id,
+      );
+    return documentFromRow(
+      this.db.prepare("SELECT * FROM documents WHERE id = ?").get(id),
+    );
+  }
+
+  automationSettings(projectId) {
+    let row = this.db
+      .prepare("SELECT * FROM project_automation_settings WHERE project_id = ?")
+      .get(projectId);
+    if (!row) {
+      const now = isoNow();
+      this.db
+        .prepare(
+          `INSERT INTO project_automation_settings
+            (project_id, debug_mode, status, message, updated_at)
+           VALUES (?, 0, 'idle', 'Debug 文档同步未启用', ?)`,
+        )
+        .run(projectId, now);
+      row = this.db
+        .prepare("SELECT * FROM project_automation_settings WHERE project_id = ?")
+        .get(projectId);
+    }
+    return {
+      projectId: row.project_id,
+      debugMode: Boolean(row.debug_mode),
+      branch: row.branch || undefined,
+      observedCommit: row.observed_commit || undefined,
+      processedCommit: row.processed_commit || undefined,
+      status: row.status,
+      message: row.message,
+      updatedAt: row.updated_at,
+    };
+  }
+
+  updateAutomationSettings(projectId, patch = {}) {
+    const current = this.automationSettings(projectId);
+    const next = {
+      debugMode: patch.debugMode ?? current.debugMode,
+      branch: patch.branch ?? current.branch,
+      observedCommit: patch.observedCommit ?? current.observedCommit,
+      processedCommit: patch.processedCommit ?? current.processedCommit,
+      status: patch.status || current.status,
+      message: patch.message ?? current.message,
+      updatedAt: isoNow(),
+    };
+    this.db
+      .prepare(
+        `UPDATE project_automation_settings
+         SET debug_mode = ?, branch = ?, observed_commit = ?, processed_commit = ?,
+             status = ?, message = ?, updated_at = ?
+         WHERE project_id = ?`,
+      )
+      .run(
+        next.debugMode ? 1 : 0,
+        next.branch || null,
+        next.observedCommit || null,
+        next.processedCommit || null,
+        next.status,
+        next.message,
+        next.updatedAt,
+        projectId,
+      );
+    return this.automationSettings(projectId);
+  }
+
+  listDebugAutomationSettings() {
+    return this.db
+      .prepare(
+        "SELECT project_id FROM project_automation_settings WHERE debug_mode = 1",
+      )
+      .all()
+      .map((row) => this.automationSettings(row.project_id));
   }
 
   getOrCreateConversation(projectId, entityId, conversationId) {

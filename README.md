@@ -6,7 +6,7 @@ VisionOwl turns a source repository into an interactive knowledge map. It combin
 
 Unlike architecture diagrams that quickly drift away from the code, VisionOwl keeps every generated relationship tied to source evidence such as files, symbols, and line numbers.
 
-> VisionOwl is currently an early-stage local application. Multi-user collaboration, remote repository connectors, and automatic DingTalk document synchronization are planned but are not implemented yet.
+> VisionOwl is currently an early-stage local application. It supports commit-aware local document maintenance through an authenticated DWS CLI; multi-user collaboration and remote repository connectors are still planned.
 
 ## Why VisionOwl?
 
@@ -51,6 +51,8 @@ VisionOwl treats source-derived facts as the foundation. AI can name, summarize,
 - Supports project-wide documents that are not bound to a specific module.
 - Displays related knowledge next to the selected graph node.
 - Stores projects, graph versions, analysis jobs, documents, annotations, and chat sessions in SQLite.
+- Generates a source-backed DingTalk document from the selected module and mounts it back onto that module.
+- Offers a project-level Debug mode that watches new local commits and updates affected DingTalk documents.
 
 ### Contextual Codex chat
 
@@ -106,6 +108,7 @@ The default **Direct Understand Engine** executes deterministic Understand Anyth
 - Git, for commit-aware graph freshness checks
 - The Understand Anything `understand` skill
 - Codex CLI or the Codex binary bundled with the ChatGPT desktop app, if AI enrichment and chat are enabled
+- An authenticated DWS CLI, if DingTalk document creation or synchronization is enabled
 
 VisionOwl looks for the Understand Anything skill in these locations:
 
@@ -137,6 +140,15 @@ Open [http://127.0.0.1:4173](http://127.0.0.1:4173). The API runs on `http://127
 3. Start the analysis.
 4. Follow the visible analysis phases while the factual graph is built and enriched.
 5. Explore the architecture, select a module, inspect its evidence, attach knowledge, or ask Codex a question.
+
+### 4. Generate and maintain module documents
+
+1. Select a code module or code domain in the graph.
+2. Choose **Generate Code Document** in the Agent panel.
+3. VisionOwl runs the module-documentation Skill, creates a DingTalk document through DWS, and mounts the returned link on the selected module.
+4. Enable **DEBUG** to use the current local commit as a baseline. Each later local commit is diffed against the last processed commit and updates documents bound to affected modules.
+
+Debug mode reacts to commits, including commits that have not been pushed. Uncommitted working-tree changes do not trigger document updates.
 
 ## Desktop Mode
 
@@ -182,6 +194,11 @@ Open [http://127.0.0.1:17300](http://127.0.0.1:17300). In this mode, the API ser
 | `VISIONOWL_ANALYSIS_ENGINE` | `direct` | Use `direct` or the compatibility `legacy` engine |
 | `VISIONOWL_SEMANTIC_CONCURRENCY` | `4` | Maximum concurrent semantic batches |
 | `VISIONOWL_ENABLE_RUNTIME_PLUGINS` | `false` | Enables optional legacy runtime plugins |
+| `VISIONOWL_ENABLE_REPO_WATCHER` | `true` | Enables the local commit watcher |
+| `VISIONOWL_REPO_WATCH_INTERVAL_MS` | `10000` | Local commit polling interval in milliseconds |
+| `DWS_BIN` | Auto-detected | Explicit DWS CLI executable path |
+| `VISIONOWL_DINGTALK_FOLDER` | DWS default | Folder ID used when creating DingTalk documents |
+| `VISIONOWL_DINGTALK_WORKSPACE` | DWS default | Workspace ID used when no folder is configured |
 
 Example deterministic-only run:
 
@@ -200,6 +217,7 @@ visionowl/
 ├── scripts/                  Development process orchestration
 ├── skills/
 │   ├── graph-layout/         Reusable evidence-graph layout guidance
+│   ├── module-documentation/ Source-backed module document generation rules
 │   └── repository-understanding/
 │                              VisionOwl repository-analysis rules
 └── dark-glass-graph-ui/      Reusable dark glass graph UI skill
@@ -218,7 +236,8 @@ VisionOwl follows several constraints to keep the graph useful and auditable:
 ## Current Limitations
 
 - The application is local-first and has no user accounts or project authorization.
-- DingTalk documents are currently attached as links; automatic API synchronization is not implemented.
+- DingTalk creation and updates currently depend on a locally installed and authenticated DWS CLI.
+- Debug synchronization watches local commits only while the VisionOwl backend is running; remote push webhooks are not implemented.
 - Aone and GitLab repository connectors are not implemented.
 - Function-level call analysis is incomplete for some languages and framework-generated behavior.
 - The Electron package is intended for development and has not yet been signed or distributed as an installer.
@@ -230,7 +249,7 @@ Do not expose the current API directly to an untrusted network. It accepts local
 
 - Shared online projects with invite-based access and real-time collaboration
 - Aone and private GitLab repository synchronization
-- DingTalk document API synchronization and AI-assisted document updates
+- Remote-branch webhooks and reviewable document-update jobs
 - Stable module identity and graph diffs across commits
 - Human review and correction of AI-generated semantic metadata
 - Richer HTTP, RPC, message-queue, database, and function-call extraction

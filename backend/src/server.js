@@ -6,8 +6,12 @@ const path = require("path");
 const { randomUUID } = require("node:crypto");
 const { AnalysisService } = require("./core/analysis-service");
 const { askAboutEntity } = require("./core/codex-agent");
+const { DingTalkDocuments } = require("./core/dingtalk-documents");
+const { DocumentAutomationService } = require("./core/document-automation");
+const { repositoryState } = require("./core/git-repository");
 const { headers, readJson, sendJson, serveStatic } = require("./core/http-utils");
 const { PluginManager } = require("./core/plugin-manager");
+const { RepositoryWatcher } = require("./core/repository-watcher");
 const { VisionStore } = require("./core/store");
 
 const root = path.resolve(__dirname, "../..");
@@ -21,6 +25,14 @@ const port = Number(process.env.PORT || 17300);
 const store = new VisionStore(dataFile);
 store.failInterruptedJobs();
 const analysis = new AnalysisService(store);
+const dingtalk = new DingTalkDocuments();
+const documentAutomation = new DocumentAutomationService(store, dingtalk);
+const repositoryWatcher = new RepositoryWatcher(store, documentAutomation, {
+  intervalMs: Number(process.env.VISIONOWL_REPO_WATCH_INTERVAL_MS || 10000),
+});
+if (String(process.env.VISIONOWL_ENABLE_REPO_WATCHER || "true") !== "false") {
+  repositoryWatcher.start();
+}
 const plugins = new PluginManager(path.join(__dirname, "plugins"));
 const runtimePluginsEnabled =
   String(process.env.VISIONOWL_ENABLE_RUNTIME_PLUGINS || "false") === "true";
@@ -35,6 +47,18 @@ function required(value, name) {
     throw Object.assign(new Error(`${name} is required.`), { status: 400 });
   }
   return value.trim();
+}
+
+async function automationSnapshot(project, settings) {
+  try {
+    const state = await repositoryState(
+      project.repoPath,
+      settings.branch || project.branch,
+    );
+    return { ...settings, currentCommit: state.commit };
+  } catch (_error) {
+    return settings;
+  }
 }
 
 function projectRoute(pathname, suffix = "") {
@@ -415,6 +439,38 @@ async function route(request, response) {
     return;
   }
 
+  const automationProjectId = projectRoute(pathname, "automation");
+  if (request.method === "GET" && automationProjectId) {
+    const project = store.getProject(automationProjectId);
+    if (!project) {
+      sendJson(response, 404, { error: "project_not_found" });
+      return;
+    }
+    sendJson(
+      response,
+      200,
+      await automationSnapshot(
+        project,
+        store.automationSettings(automationProjectId),
+      ),
+    );
+    return;
+  }
+  if (request.method === "PATCH" && automationProjectId) {
+    const body = await readJson(request);
+    const value = await repositoryWatcher.enable(
+      automationProjectId,
+      body.debugMode === true,
+    );
+    const project = store.getProject(automationProjectId);
+    sendJson(
+      response,
+      200,
+      project ? await automationSnapshot(project, value) : value,
+    );
+    return;
+  }
+
   const documentsProjectId = projectRoute(pathname, "documents");
   if (request.method === "GET" && documentsProjectId) {
     sendJson(response, 200, store.listProjectDocuments(documentsProjectId));
@@ -516,6 +572,64 @@ async function route(request, response) {
     return;
   }
 
+  const generateDocumentMatch = pathname.match(
+    /^\/api\/projects\/([^/]+)\/entities\/([^/]+)\/documents\/generate\/stream$/,
+  );
+  if (request.method === "POST" && generateDocumentMatch) {
+    const [projectValue, entityValue] = generateDocumentMatch
+      .slice(1)
+      .map(decodeURIComponent);
+    const body = await readJson(request);
+    writeSseHead(response);
+    try {
+      const result = await documentAutomation.createAndBind({
+        projectId: projectValue,
+        entityId: entityValue,
+        scope:
+          body.scope && typeof body.scope === "object" ? body.scope : undefined,
+        onProgress: (progress) =>
+          writeSseEvent(response, "progress", progress),
+      });
+      writeSseEvent(response, "complete", result);
+    } catch (error) {
+      writeSseEvent(response, "error", {
+        message: error.message,
+        requestId: randomUUID(),
+      });
+    }
+    response.end();
+    return;
+  }
+
+  const refreshDocumentsMatch = pathname.match(
+    /^\/api\/projects\/([^/]+)\/entities\/([^/]+)\/documents\/refresh\/stream$/,
+  );
+  if (request.method === "POST" && refreshDocumentsMatch) {
+    const [projectValue, entityValue] = refreshDocumentsMatch
+      .slice(1)
+      .map(decodeURIComponent);
+    const body = await readJson(request);
+    writeSseHead(response);
+    try {
+      const result = await documentAutomation.refreshBoundDocuments({
+        projectId: projectValue,
+        entityId: entityValue,
+        scope:
+          body.scope && typeof body.scope === "object" ? body.scope : undefined,
+        onProgress: (progress) =>
+          writeSseEvent(response, "progress", progress),
+      });
+      writeSseEvent(response, "complete", result);
+    } catch (error) {
+      writeSseEvent(response, "error", {
+        message: error.message,
+        requestId: randomUUID(),
+      });
+    }
+    response.end();
+    return;
+  }
+
   const streamChatProjectId = projectRoute(pathname, "chat/stream");
   if (request.method === "POST" && streamChatProjectId) {
     const body = await readJson(request);
@@ -585,6 +699,7 @@ function shutdown(signal) {
   if (shuttingDown) return;
   shuttingDown = true;
   console.log(`received ${signal}, shutting down`);
+  repositoryWatcher.stop();
   plugins.stopAll();
   server.close(() => {
     store.close();

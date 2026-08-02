@@ -5,16 +5,23 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  ExternalLink,
   FileCode2,
+  FileText,
   Lightbulb,
   ListTree,
   LoaderCircle,
+  RefreshCw,
   Sparkles,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type {
   ChatAnswer,
   ChatProgress,
+  DocumentBinding,
+  DocumentGenerationProgress,
+  DocumentRefreshCompletion,
+  DocumentRefreshProgress,
   EntityScope,
   GraphEntity,
 } from "@visionowl/contracts";
@@ -26,6 +33,8 @@ type DisplayMessage = {
   content: string;
   provider?: "codex" | "local-fallback";
   answer?: ChatAnswer;
+  document?: DocumentBinding;
+  documentRefresh?: DocumentRefreshCompletion;
 };
 
 function ChatAnswerView({ answer }: { answer: ChatAnswer }) {
@@ -126,22 +135,40 @@ export function CodeChat({
   projectId,
   entity,
   scope,
+  documents,
   collapsed,
   onToggle,
+  onDocumentCreated,
+  onDocumentActivity,
 }: {
   projectId?: string;
   entity?: GraphEntity;
   scope?: EntityScope;
+  documents: DocumentBinding[];
   collapsed: boolean;
   onToggle: () => void;
+  onDocumentCreated?: () => void;
+  onDocumentActivity?: (activity?: DocumentUpdateActivity) => void;
 }) {
   const [question, setQuestion] = useState("");
   const [conversationId, setConversationId] = useState<string>();
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState<ChatProgress[]>([]);
+  const [progress, setProgress] = useState<
+    Array<ChatProgress | DocumentGenerationProgress | DocumentRefreshProgress>
+  >([]);
   const messagesRef = useRef<HTMLDivElement>(null);
   const latestAssistantRef = useRef<HTMLElement>(null);
+  const activityTimerRef = useRef<number | undefined>(undefined);
+
+  useEffect(
+    () => () => {
+      if (activityTimerRef.current) {
+        window.clearTimeout(activityTimerRef.current);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     setConversationId(undefined);
@@ -166,6 +193,9 @@ export function CodeChat({
   }, [loading, messages, progress]);
 
   const latestProgress = progress.at(-1);
+  const refreshableDocuments = documents.filter(
+    (document) => document.provider === "dingtalk",
+  );
 
   return (
     <aside className={`vision-chat ${collapsed ? "is-collapsed" : ""}`}>
@@ -219,6 +249,46 @@ export function CodeChat({
                   <span>{message.role === "user" ? "YOU" : "CODEX"}</span>
                   {message.answer ? (
                     <ChatAnswerView answer={message.answer} />
+                  ) : message.document ? (
+                    <div className="vision-chat-document-result">
+                      <FileText size={15} />
+                      <span>
+                        <strong>{message.document.title}</strong>
+                        <small>钉钉文档已创建并挂载到当前模块</small>
+                      </span>
+                      <a
+                        href={message.document.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="打开钉钉文档"
+                      >
+                        <ExternalLink size={13} />
+                      </a>
+                    </div>
+                  ) : message.documentRefresh ? (
+                    <div className="vision-chat-document-result is-refresh">
+                      <RefreshCw size={15} />
+                      <span>
+                        <strong>关联文档已校准</strong>
+                        <small>
+                          核对 {message.documentRefresh.checkedDocuments} 篇 · 更新{" "}
+                          {message.documentRefresh.updatedDocuments} 篇 · 无需修改{" "}
+                          {message.documentRefresh.unchangedDocuments} 篇
+                        </small>
+                      </span>
+                      {message.documentRefresh.documents[0] ? (
+                        <a
+                          href={message.documentRefresh.documents[0].url}
+                          target="_blank"
+                          rel="noreferrer"
+                          title="打开关联文档"
+                        >
+                          <ExternalLink size={13} />
+                        </a>
+                      ) : (
+                        <span />
+                      )}
+                    </div>
                   ) : (
                     <p>{message.content}</p>
                   )}
@@ -261,6 +331,199 @@ export function CodeChat({
                 </div>
               </div>
             )}
+          </div>
+
+          <div className="vision-chat-quick-actions">
+            <button
+              type="button"
+              disabled={!projectId || !entity || loading}
+              onClick={async () => {
+                if (!projectId || !entity || loading) return;
+                setMessages((current) => [
+                  ...current,
+                  {
+                    id: crypto.randomUUID(),
+                    role: "user",
+                    content: `为 ${entity.name} 生成代码文档`,
+                  },
+                ]);
+                setLoading(true);
+                setProgress([]);
+                try {
+                  const response = await visionApi.generateDocumentStream(
+                    projectId,
+                    entity.id,
+                    { scope },
+                    (nextProgress) => {
+                      setProgress((current) => {
+                        const existingIndex = current.findIndex(
+                          (item) => item.phase === nextProgress.phase,
+                        );
+                        if (existingIndex < 0) return [...current, nextProgress];
+                        return current.map((item, index) =>
+                          index === existingIndex ? nextProgress : item,
+                        );
+                      });
+                    },
+                  );
+                  setMessages((current) => [
+                    ...current,
+                    {
+                      id: crypto.randomUUID(),
+                      role: "assistant",
+                      content: response.summary,
+                      provider: "codex",
+                      document: response.document,
+                    },
+                  ]);
+                  onDocumentCreated?.();
+                } catch (error) {
+                  setMessages((current) => [
+                    ...current,
+                    {
+                      id: crypto.randomUUID(),
+                      role: "assistant",
+                      content: (error as Error).message,
+                      provider: "local-fallback",
+                    },
+                  ]);
+                } finally {
+                  setLoading(false);
+                  setProgress([]);
+                }
+              }}
+            >
+              <FileText size={13} />
+              生成代码文档
+            </button>
+            <button
+              type="button"
+              disabled={
+                !projectId ||
+                !entity ||
+                loading ||
+                refreshableDocuments.length === 0
+              }
+              title={
+                refreshableDocuments.length > 0
+                  ? `分析当前模块并更新 ${refreshableDocuments.length} 篇钉钉关联文档`
+                  : "当前模块没有可更新的钉钉关联文档"
+              }
+              onClick={async () => {
+                if (
+                  !projectId ||
+                  !entity ||
+                  loading ||
+                  refreshableDocuments.length === 0
+                ) {
+                  return;
+                }
+                setMessages((current) => [
+                  ...current,
+                  {
+                    id: crypto.randomUUID(),
+                    role: "user",
+                    content: `分析 ${entity.name} 并更新关联文档`,
+                  },
+                ]);
+                setLoading(true);
+                setProgress([]);
+                const initialDocumentTitle =
+                  refreshableDocuments[0]?.title ?? "关联文档";
+                if (activityTimerRef.current) {
+                  window.clearTimeout(activityTimerRef.current);
+                }
+                onDocumentActivity?.({
+                  source: "manual",
+                  phase: "context",
+                  label: "正在准备模块与文档上下文",
+                  documentTitle: initialDocumentTitle,
+                  current: 1,
+                  total: Math.max(1, 1 + refreshableDocuments.length * 3),
+                });
+                try {
+                  const response = await visionApi.refreshDocumentsStream(
+                    projectId,
+                    entity.id,
+                    { scope },
+                    (nextProgress) => {
+                      onDocumentActivity?.({
+                        source: "manual",
+                        phase: nextProgress.phase,
+                        label: nextProgress.label,
+                        documentTitle:
+                          nextProgress.phase === "context"
+                            ? initialDocumentTitle
+                            : nextProgress.detail || initialDocumentTitle,
+                        current: nextProgress.current,
+                        total: nextProgress.total,
+                      });
+                      setProgress((current) => {
+                        const existingIndex = current.findIndex(
+                          (item) => item.phase === nextProgress.phase,
+                        );
+                        if (existingIndex < 0) return [...current, nextProgress];
+                        return current.map((item, index) =>
+                          index === existingIndex ? nextProgress : item,
+                        );
+                      });
+                    },
+                  );
+                  setMessages((current) => [
+                    ...current,
+                    {
+                      id: crypto.randomUUID(),
+                      role: "assistant",
+                      content: `已核对 ${response.checkedDocuments} 篇关联文档。`,
+                      provider: "codex",
+                      documentRefresh: response,
+                    },
+                  ]);
+                  onDocumentCreated?.();
+                  onDocumentActivity?.({
+                    source: "manual",
+                    phase: "complete",
+                    label: `已完成 ${response.checkedDocuments} 篇文档核对`,
+                    documentTitle:
+                      response.documents[0]?.title ?? initialDocumentTitle,
+                    current: 1,
+                    total: 1,
+                  });
+                  activityTimerRef.current = window.setTimeout(
+                    () => onDocumentActivity?.(undefined),
+                    1800,
+                  );
+                } catch (error) {
+                  setMessages((current) => [
+                    ...current,
+                    {
+                      id: crypto.randomUUID(),
+                      role: "assistant",
+                      content: (error as Error).message,
+                      provider: "local-fallback",
+                    },
+                  ]);
+                  onDocumentActivity?.({
+                    source: "manual",
+                    phase: "error",
+                    label: (error as Error).message,
+                    documentTitle: initialDocumentTitle,
+                    current: 1,
+                    total: 1,
+                  });
+                  activityTimerRef.current = window.setTimeout(
+                    () => onDocumentActivity?.(undefined),
+                    3600,
+                  );
+                } finally {
+                  setLoading(false);
+                  setProgress([]);
+                }
+              }}
+            >
+              <RefreshCw size={13} />
+              更新关联文档
+            </button>
           </div>
 
           <form
@@ -348,3 +611,12 @@ export function CodeChat({
     </aside>
   );
 }
+
+export type DocumentUpdateActivity = {
+  source: "manual" | "debug";
+  phase: string;
+  label: string;
+  documentTitle: string;
+  current: number;
+  total: number;
+};

@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["action", "title", "summary", "reason", "markdown", "evidence"],
+  "properties": {
+    "action": {
+      "type": "string",
+      "enum": ["create", "update", "no_change"]
+    },
+    "title": { "type": "string" },
+    "summary": { "type": "string" },
+    "reason": { "type": "string" },
+    "markdown": { "type": "string" },
+    "evidence": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["file", "line", "symbol"],
+        "properties": {
+          "file": { "type": "string" },
+          "line": { "type": ["integer", "null"] },
+          "symbol": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}

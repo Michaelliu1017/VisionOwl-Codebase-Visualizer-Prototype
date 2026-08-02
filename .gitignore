@@ -39,3 +39,6 @@ tmp/
 
 # TypeScript incremental build output
 *.tsbuildinfo
+
+# Standalone repository used to verify graph and document automation
+/testRepo/

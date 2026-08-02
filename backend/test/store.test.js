@@ -84,6 +84,18 @@ test("store persists graph versions, annotations, documents and conversations", 
   assert.equal(store.listProjects()[0].nodeCount, 1);
   assert.equal(store.getGraph(project.id).executionFlows[0].name, "Request");
 
+  const automation = store.updateAutomationSettings(project.id, {
+    debugMode: true,
+    branch: "main",
+    observedCommit: "abc123",
+    processedCommit: "abc123",
+    status: "watching",
+    message: "Watching local commits",
+  });
+  assert.equal(automation.debugMode, true);
+  assert.equal(automation.branch, "main");
+  assert.equal(store.listDebugAutomationSettings().length, 1);
+
   const scopeId = "visual-domain:core";
   store.addAnnotation(project.id, scopeId, "Bob", "Owns the whole core domain.");
   store.addDocument(project.id, scopeId, {
