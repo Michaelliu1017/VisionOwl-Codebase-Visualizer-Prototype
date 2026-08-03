@@ -8,6 +8,7 @@ const path = require("node:path");
 const test = require("node:test");
 const { RepositoryWatcher } = require("../src/core/repository-watcher");
 const { VisionStore } = require("../src/core/store");
+const { RepositoryPolicy } = require("../src/security/repository-policy");
 
 function git(root, ...args) {
   return execFileSync("git", ["-C", root, ...args], { encoding: "utf8" }).trim();
@@ -42,6 +43,8 @@ test("debug watcher triggers once for a new local commit", async (t) => {
       calls.push(input);
       return { changedFiles: 1, candidateDocuments: 0, updatedDocuments: 0 };
     },
+  }, {
+    repositoryPolicy: new RepositoryPolicy(),
   });
   await watcher.enable(project.id, true);
 
@@ -88,6 +91,8 @@ test("debug watcher retries an observed commit after document sync fails", async
       if (attempts === 1) throw new Error("temporary document failure");
       return { changedFiles: 1, candidateDocuments: 1, updatedDocuments: 1 };
     },
+  }, {
+    repositoryPolicy: new RepositoryPolicy(),
   });
   await watcher.enable(project.id, true);
 

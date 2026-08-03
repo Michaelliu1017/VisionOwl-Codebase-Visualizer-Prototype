@@ -1,6 +1,7 @@
 "use strict";
 
 const path = require("node:path");
+const { repositoryState } = require("./git-repository");
 const {
   projectDocumentOwnerId,
 } = require("./store");
@@ -78,19 +79,37 @@ class DocumentAutomationService {
       refreshDocument = refreshModuleDocument,
       updateDocument = updateModuleDocument,
       readChangedFilesImpl = readChangedFiles,
+      repositoryPolicy,
+      repositoryStateImpl = repositoryState,
     } = {},
   ) {
+    if (!repositoryPolicy) {
+      throw new Error("DocumentAutomationService requires a RepositoryPolicy.");
+    }
     this.store = store;
     this.dingtalk = dingtalk;
     this.generateDocument = generateDocument;
     this.refreshDocument = refreshDocument;
     this.updateDocument = updateDocument;
     this.readChangedFiles = readChangedFilesImpl;
+    this.repositoryPolicy = repositoryPolicy;
+    this.repositoryState = repositoryStateImpl;
+  }
+
+  async authorizedProject(project, options) {
+    const authorization = this.repositoryPolicy.authorizeProject(project, options);
+    const state = await this.repositoryState(
+      authorization.path,
+      options?.branch || project.branch || undefined,
+    );
+    this.repositoryPolicy.assertBranch(authorization, state.branch);
+    return authorization;
   }
 
   async createAndBind({ projectId, entityId, scope, onProgress }) {
     const project = this.store.getProject(projectId);
     if (!project) throw new Error("Project was not found.");
+    const authorization = await this.authorizedProject(project);
     const context = scope
       ? this.store.scopeContext(projectId, { ...scope, id: entityId })
       : this.store.entityContext(projectId, entityId);
@@ -113,7 +132,7 @@ class DocumentAutomationService {
       total: 4,
     });
     const generated = await this.generateDocument({
-      repoPath: path.resolve(project.repoPath),
+      repoPath: path.resolve(authorization.path),
       project,
       context,
     });
@@ -160,6 +179,7 @@ class DocumentAutomationService {
   async refreshBoundDocuments({ projectId, entityId, scope, onProgress }) {
     const project = this.store.getProject(projectId);
     if (!project) throw new Error("Project was not found.");
+    const authorization = await this.authorizedProject(project);
     const context = scope
       ? this.store.scopeContext(projectId, { ...scope, id: entityId })
       : this.store.entityContext(projectId, entityId);
@@ -207,7 +227,7 @@ class DocumentAutomationService {
           total,
         });
         const generated = await this.refreshDocument({
-          repoPath: path.resolve(project.repoPath),
+          repoPath: path.resolve(authorization.path),
           project,
           context,
           document,
@@ -288,7 +308,8 @@ class DocumentAutomationService {
   }
 
   async syncLocalCommit({ project, before, after }) {
-    const files = await this.readChangedFiles(project.repoPath, before, after);
+    const authorization = await this.authorizedProject(project);
+    const files = await this.readChangedFiles(authorization.path, before, after);
     if (files.length === 0) {
       return { changedFiles: 0, candidateDocuments: 0, updatedDocuments: 0 };
     }
@@ -323,7 +344,7 @@ class DocumentAutomationService {
       try {
         const currentMarkdown = await this.dingtalk.read(document.url);
         const generated = await this.updateDocument({
-          repoPath: path.resolve(project.repoPath),
+          repoPath: path.resolve(authorization.path),
           project,
           context,
           document,

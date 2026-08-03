@@ -16,10 +16,14 @@ const CONTENT_TYPES = {
 
 function headers(extra = {}) {
   return {
-    "Access-Control-Allow-Headers": "Content-Type, Last-Event-ID",
+    "Access-Control-Allow-Headers":
+      "Content-Type, Last-Event-ID, X-VisionOwl-Local-Token",
     "Access-Control-Allow-Methods": "GET, POST, PATCH, DELETE, OPTIONS",
-    "Access-Control-Allow-Origin": "*",
     "Cache-Control": "no-store",
+    "Cross-Origin-Resource-Policy": "same-origin",
+    "Referrer-Policy": "no-referrer",
+    "X-Frame-Options": "DENY",
+    "X-Content-Type-Options": "nosniff",
     ...extra,
   };
 }
@@ -76,10 +80,24 @@ function serveStatic(publicRoot, pathname, response) {
     });
     return;
   }
+  const realRoot = fs.realpathSync.native(root);
+  const realCandidate = fs.realpathSync.native(candidate);
+  if (
+    realCandidate !== realRoot &&
+    !realCandidate.startsWith(`${realRoot}${path.sep}`)
+  ) {
+    sendJson(response, 400, { error: "invalid_path" });
+    return;
+  }
+  candidate = realCandidate;
   const extension = path.extname(candidate).toLowerCase();
   response.writeHead(200, {
     "Content-Type": CONTENT_TYPES[extension] || "application/octet-stream",
     "Cache-Control": extension === ".html" ? "no-store" : "public, max-age=3600",
+    "Cross-Origin-Resource-Policy": "same-origin",
+    "Referrer-Policy": "no-referrer",
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
   });
   fs.createReadStream(candidate).pipe(response);
 }

@@ -23,6 +23,18 @@ test("store persists graph versions, annotations, documents and conversations", 
     description: "Persistence test",
     repoPath: root,
   });
+  const boundProject = store.bindCloudProject(project.id, "cloud-project-1");
+  assert.equal(boundProject.cloudProjectId, "cloud-project-1");
+  assert.equal(store.getProject(project.id).cloudProjectId, "cloud-project-1");
+
+  const secondProject = store.createProject({
+    name: "Second fixture",
+    repoPath: root,
+  });
+  assert.throws(
+    () => store.bindCloudProject(secondProject.id, "cloud-project-1"),
+    (error) => error.code === "cloud_project_already_bound",
+  );
   const entity = {
     id: "module:core",
     projectId: project.id,
@@ -81,7 +93,10 @@ test("store persists graph versions, annotations, documents and conversations", 
       .entityId,
     projectDocumentOwnerId(project.id),
   );
-  assert.equal(store.listProjects()[0].nodeCount, 1);
+  assert.equal(
+    store.listProjects().find((value) => value.id === project.id).nodeCount,
+    1,
+  );
   assert.equal(store.getGraph(project.id).executionFlows[0].name, "Request");
 
   const automation = store.updateAutomationSettings(project.id, {

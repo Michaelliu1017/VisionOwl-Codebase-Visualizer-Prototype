@@ -1,0 +1,20 @@
+{
+  "name": "@visionowl/cloud-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "dev": "VISIONOWL_CLOUD_STORE=memory node --watch src/server.js",
+    "start": "node src/server.js",
+    "migrate": "node src/db/migrate.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "@visionowl/graph-sanitizer": "*",
+    "pg": "^8.16.3",
+    "ws": "^8.18.3"
+  },
+  "engines": {
+    "node": ">=22.5"
+  }
+}

@@ -1,7 +1,7 @@
-import { CodeWorkspace } from "./code/CodeWorkspace";
+import { CloudWorkspace } from "./cloud/CloudWorkspace";
 
 export type VisionWorkspace = "code" | "runtime";
 
 export function App() {
-  return <CodeWorkspace />;
+  return <CloudWorkspace />;
 }

@@ -25,7 +25,7 @@ import type {
   EntityScope,
   GraphEntity,
 } from "@visionowl/contracts";
-import { visionApi } from "./api";
+import { isDwsAuthRequired, visionApi } from "./api";
 
 type DisplayMessage = {
   id: string;
@@ -35,6 +35,14 @@ type DisplayMessage = {
   answer?: ChatAnswer;
   document?: DocumentBinding;
   documentRefresh?: DocumentRefreshCompletion;
+};
+
+type DwsAuthProgress = {
+  phase: "dws_auth";
+  label: string;
+  detail?: string;
+  current: number;
+  total: number;
 };
 
 function ChatAnswerView({ answer }: { answer: ChatAnswer }) {
@@ -140,6 +148,8 @@ export function CodeChat({
   onToggle,
   onDocumentCreated,
   onDocumentActivity,
+  unavailableReason,
+  documentActionsEnabled = true,
 }: {
   projectId?: string;
   entity?: GraphEntity;
@@ -149,13 +159,20 @@ export function CodeChat({
   onToggle: () => void;
   onDocumentCreated?: () => void;
   onDocumentActivity?: (activity?: DocumentUpdateActivity) => void;
+  unavailableReason?: string;
+  documentActionsEnabled?: boolean;
 }) {
   const [question, setQuestion] = useState("");
   const [conversationId, setConversationId] = useState<string>();
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<
-    Array<ChatProgress | DocumentGenerationProgress | DocumentRefreshProgress>
+    Array<
+      | ChatProgress
+      | DocumentGenerationProgress
+      | DocumentRefreshProgress
+      | DwsAuthProgress
+    >
   >([]);
   const messagesRef = useRef<HTMLDivElement>(null);
   const latestAssistantRef = useRef<HTMLElement>(null);
@@ -197,6 +214,43 @@ export function CodeChat({
     (document) => document.provider === "dingtalk",
   );
 
+  const runWithDwsAuthRetry = async <T,>(
+    operation: () => Promise<T>,
+    onAuthProgress?: (state: "waiting" | "complete") => void,
+  ): Promise<T> => {
+    try {
+      return await operation();
+    } catch (error) {
+      const desktop = window.visionOwlDesktop;
+      if (!isDwsAuthRequired(error) || !desktop?.startDwsAuthentication) {
+        throw error;
+      }
+
+      onAuthProgress?.("waiting");
+      setProgress([
+        {
+          phase: "dws_auth",
+          label: "等待钉钉 OAuth 授权",
+          detail: "登录页已打开，授权完成后将自动继续",
+          current: 1,
+          total: 2,
+        },
+      ]);
+      await desktop.startDwsAuthentication();
+      onAuthProgress?.("complete");
+      setProgress([
+        {
+          phase: "dws_auth",
+          label: "钉钉授权已完成",
+          detail: "正在重试刚才的文档操作",
+          current: 2,
+          total: 2,
+        },
+      ]);
+      return operation();
+    }
+  };
+
   return (
     <aside className={`vision-chat ${collapsed ? "is-collapsed" : ""}`}>
       <header>
@@ -231,7 +285,10 @@ export function CodeChat({
             {messages.length === 0 ? (
               <div className="vision-chat-empty">
                 <Bot size={18} />
-                <span>{entity ? "MODULE CONTEXT READY" : "SELECT A MODULE"}</span>
+                <span>
+                  {unavailableReason ||
+                    (entity ? "MODULE CONTEXT READY" : "SELECT A MODULE")}
+                </span>
               </div>
             ) : (
               messages.map((message, index) => (
@@ -333,6 +390,7 @@ export function CodeChat({
             )}
           </div>
 
+          {documentActionsEnabled && (
           <div className="vision-chat-quick-actions">
             <button
               type="button"
@@ -350,21 +408,23 @@ export function CodeChat({
                 setLoading(true);
                 setProgress([]);
                 try {
-                  const response = await visionApi.generateDocumentStream(
-                    projectId,
-                    entity.id,
-                    { scope },
-                    (nextProgress) => {
-                      setProgress((current) => {
-                        const existingIndex = current.findIndex(
-                          (item) => item.phase === nextProgress.phase,
-                        );
-                        if (existingIndex < 0) return [...current, nextProgress];
-                        return current.map((item, index) =>
-                          index === existingIndex ? nextProgress : item,
-                        );
-                      });
-                    },
+                  const response = await runWithDwsAuthRetry(() =>
+                    visionApi.generateDocumentStream(
+                      projectId,
+                      entity.id,
+                      { scope },
+                      (nextProgress) => {
+                        setProgress((current) => {
+                          const existingIndex = current.findIndex(
+                            (item) => item.phase === nextProgress.phase,
+                          );
+                          if (existingIndex < 0) return [...current, nextProgress];
+                          return current.map((item, index) =>
+                            index === existingIndex ? nextProgress : item,
+                          );
+                        });
+                      },
+                    ),
                   );
                   setMessages((current) => [
                     ...current,
@@ -442,30 +502,46 @@ export function CodeChat({
                   total: Math.max(1, 1 + refreshableDocuments.length * 3),
                 });
                 try {
-                  const response = await visionApi.refreshDocumentsStream(
-                    projectId,
-                    entity.id,
-                    { scope },
-                    (nextProgress) => {
+                  const response = await runWithDwsAuthRetry(
+                    () =>
+                      visionApi.refreshDocumentsStream(
+                        projectId,
+                        entity.id,
+                        { scope },
+                        (nextProgress) => {
+                          onDocumentActivity?.({
+                            source: "manual",
+                            phase: nextProgress.phase,
+                            label: nextProgress.label,
+                            documentTitle:
+                              nextProgress.phase === "context"
+                                ? initialDocumentTitle
+                                : nextProgress.detail || initialDocumentTitle,
+                            current: nextProgress.current,
+                            total: nextProgress.total,
+                          });
+                          setProgress((current) => {
+                            const existingIndex = current.findIndex(
+                              (item) => item.phase === nextProgress.phase,
+                            );
+                            if (existingIndex < 0) return [...current, nextProgress];
+                            return current.map((item, index) =>
+                              index === existingIndex ? nextProgress : item,
+                            );
+                          });
+                        },
+                      ),
+                    (state) => {
                       onDocumentActivity?.({
                         source: "manual",
-                        phase: nextProgress.phase,
-                        label: nextProgress.label,
-                        documentTitle:
-                          nextProgress.phase === "context"
-                            ? initialDocumentTitle
-                            : nextProgress.detail || initialDocumentTitle,
-                        current: nextProgress.current,
-                        total: nextProgress.total,
-                      });
-                      setProgress((current) => {
-                        const existingIndex = current.findIndex(
-                          (item) => item.phase === nextProgress.phase,
-                        );
-                        if (existingIndex < 0) return [...current, nextProgress];
-                        return current.map((item, index) =>
-                          index === existingIndex ? nextProgress : item,
-                        );
+                        phase: "dws_auth",
+                        label:
+                          state === "waiting"
+                            ? "等待钉钉 OAuth 授权"
+                            : "授权完成，正在重试",
+                        documentTitle: initialDocumentTitle,
+                        current: state === "waiting" ? 1 : 2,
+                        total: 2,
                       });
                     },
                   );
@@ -525,6 +601,7 @@ export function CodeChat({
               更新关联文档
             </button>
           </div>
+          )}
 
           <form
             className="vision-chat-composer"
@@ -595,12 +672,15 @@ export function CodeChat({
               rows={2}
               value={question}
               onChange={(event) => setQuestion(event.target.value)}
-              disabled={!entity || loading}
-              placeholder={entity ? "询问当前模块..." : "先选择一个代码模块"}
+              disabled={!projectId || !entity || loading}
+              placeholder={
+                unavailableReason ||
+                (entity ? "询问当前模块..." : "先选择一个代码模块")
+              }
             />
             <button
               type="submit"
-              disabled={!entity || !question.trim() || loading}
+              disabled={!projectId || !entity || !question.trim() || loading}
               aria-label="发送"
             >
               <ArrowUp size={16} />

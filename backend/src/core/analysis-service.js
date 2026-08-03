@@ -5,13 +5,26 @@ const path = require("path");
 const { EventEmitter } = require("node:events");
 const { adaptUnderstandGraph } = require("./understand-adapter");
 const { runUnderstandAnything } = require("./understand-anything");
+const { repositoryState } = require("./git-repository");
 
 class AnalysisService extends EventEmitter {
-  constructor(store, { analyzeRepository = runUnderstandAnything } = {}) {
+  constructor(
+    store,
+    {
+      analyzeRepository = runUnderstandAnything,
+      repositoryPolicy,
+      repositoryStateImpl = repositoryState,
+    } = {},
+  ) {
     super();
+    if (!repositoryPolicy) {
+      throw new Error("AnalysisService requires a RepositoryPolicy.");
+    }
     this.store = store;
     this.running = new Set();
     this.analyzeRepository = analyzeRepository;
+    this.repositoryPolicy = repositoryPolicy;
+    this.repositoryState = repositoryStateImpl;
   }
 
   publish(job, phase, progress, message) {
@@ -45,7 +58,10 @@ class AnalysisService extends EventEmitter {
     const project = this.store.getProject(job.projectId);
     if (!project) return;
     try {
-      const repoPath = path.resolve(project.repoPath);
+      const authorization = this.repositoryPolicy.authorizeProject(project);
+      const repoPath = path.resolve(authorization.path);
+      const state = await this.repositoryState(repoPath, project.branch);
+      this.repositoryPolicy.assertBranch(authorization, state.branch);
       const stat = fs.statSync(repoPath);
       if (!stat.isDirectory()) throw new Error("Repository path is not a directory.");
 

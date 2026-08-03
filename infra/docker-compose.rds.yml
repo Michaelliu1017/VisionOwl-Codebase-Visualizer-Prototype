@@ -1,0 +1,38 @@
+services:
+  cloud:
+    build:
+      context: ..
+      dockerfile: cloud-backend/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 17800
+      VISIONOWL_CLOUD_STORE: postgres
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      PGSSL: ${PGSSL:-true}
+      PGSSL_CA_FILE: ${PGSSL_CA_FILE:-}
+      VISIONOWL_ALLOWED_ORIGINS: ${VISIONOWL_ALLOWED_ORIGINS:?VISIONOWL_ALLOWED_ORIGINS is required}
+      VISIONOWL_ACCESS_TOKEN_TTL_SECONDS: ${VISIONOWL_ACCESS_TOKEN_TTL_SECONDS:-3600}
+      VISIONOWL_REFRESH_TOKEN_TTL_SECONDS: ${VISIONOWL_REFRESH_TOKEN_TTL_SECONDS:-2592000}
+      VISIONOWL_INVITE_TTL_SECONDS: ${VISIONOWL_INVITE_TTL_SECONDS:-604800}
+      VISIONOWL_GRAPH_MAX_BYTES: ${VISIONOWL_GRAPH_MAX_BYTES:-5000000}
+    command: ["sh", "-c", "node cloud-backend/src/db/migrate.js && exec node cloud-backend/src/server.js"]
+    expose: ["17800"]
+    networks: [visionowl-private]
+
+  gateway:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      cloud:
+        condition: service_healthy
+    ports:
+      - "${VISIONOWL_GATEWAY_BIND:-127.0.0.1:8080}:80"
+    volumes:
+      - ./nginx/visionowl-cloud.conf:/etc/nginx/conf.d/default.conf:ro
+    networks: [visionowl-private]
+
+networks:
+  visionowl-private:
+    driver: bridge

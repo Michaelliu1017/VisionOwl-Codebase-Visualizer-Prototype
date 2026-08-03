@@ -7,6 +7,7 @@ const path = require("node:path");
 const test = require("node:test");
 const { AnalysisService } = require("../src/core/analysis-service");
 const { VisionStore } = require("../src/core/store");
+const { RepositoryPolicy } = require("../src/security/repository-policy");
 
 function understandGraph() {
   return {
@@ -63,6 +64,8 @@ test("analysis service publishes the Understand-Anything graph", async (t) => {
   });
   const job = store.createJob(project.id, true);
   const service = new AnalysisService(store, {
+    repositoryPolicy: new RepositoryPolicy(),
+    repositoryStateImpl: async () => ({ branch: "master", commit: "abc123" }),
     analyzeRepository: async ({ onProgress, onGraph }) => {
       onProgress("ua_scan", 22, "项目扫描完成");
       onGraph(understandGraph(), {

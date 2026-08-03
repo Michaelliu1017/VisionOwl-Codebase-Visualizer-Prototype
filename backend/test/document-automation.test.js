@@ -8,6 +8,7 @@ const test = require("node:test");
 const { DocumentAutomationService } = require("../src/core/document-automation");
 const { DingTalkDocuments } = require("../src/core/dingtalk-documents");
 const { VisionStore } = require("../src/core/store");
+const { RepositoryPolicy } = require("../src/security/repository-policy");
 
 function fixtureStore(t) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "visionowl-docs-"));
@@ -41,7 +42,12 @@ function fixtureStore(t) {
     ],
     relations: [],
   });
-  return { root, store, project };
+  return {
+    root,
+    store,
+    project,
+    repositoryPolicy: new RepositoryPolicy(),
+  };
 }
 
 test("DingTalk adapter creates a document and returns a mountable URL", async () => {
@@ -82,8 +88,20 @@ test("DingTalk adapter extracts Markdown from the open DWS response", async () =
   assert.equal(markdown, "# API\n\nCurrent module documentation.");
 });
 
+test("DingTalk adapter exposes a stable error code when OAuth is required", async () => {
+  const adapter = new DingTalkDocuments({
+    run: async () => JSON.stringify({ authenticated: false, message: "未登录" }),
+  });
+
+  await assert.rejects(adapter.assertAuthenticated(), (error) => {
+    assert.equal(error.code, "dws_auth_required");
+    assert.equal(error.status, 401);
+    return true;
+  });
+});
+
 test("module document generation publishes and mounts the DingTalk document", async (t) => {
-  const { store, project } = fixtureStore(t);
+  const { store, project, repositoryPolicy } = fixtureStore(t);
   const progress = [];
   const service = new DocumentAutomationService(
     store,
@@ -95,6 +113,8 @@ test("module document generation publishes and mounts the DingTalk document", as
       }),
     },
     {
+      repositoryPolicy,
+      repositoryStateImpl: async () => ({ branch: "master", commit: "abc123" }),
       generateDocument: async () => ({
         action: "create",
         title: "API 代码说明",
@@ -121,7 +141,7 @@ test("module document generation publishes and mounts the DingTalk document", as
 });
 
 test("manual module refresh updates existing DingTalk documents in place", async (t) => {
-  const { store, project } = fixtureStore(t);
+  const { store, project, repositoryPolicy } = fixtureStore(t);
   const dingtalkDocument = store.addDocument(project.id, "module:api", {
     provider: "dingtalk",
     title: "API 代码说明",
@@ -147,6 +167,8 @@ test("manual module refresh updates existing DingTalk documents in place", async
       overwrite: async (url, markdown) => writes.push({ url, markdown }),
     },
     {
+      repositoryPolicy,
+      repositoryStateImpl: async () => ({ branch: "master", commit: "abc123" }),
       refreshDocument: async ({ context, currentMarkdown }) => {
         assert.equal(context.entity.id, "module:api");
         assert.equal(currentMarkdown, "# API\n\nOld content.");

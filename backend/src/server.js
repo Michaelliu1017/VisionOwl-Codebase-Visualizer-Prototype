@@ -13,6 +13,12 @@ const { headers, readJson, sendJson, serveStatic } = require("./core/http-utils"
 const { PluginManager } = require("./core/plugin-manager");
 const { RepositoryWatcher } = require("./core/repository-watcher");
 const { VisionStore } = require("./core/store");
+const { LocalAuth, createLocalApiToken } = require("./security/local-auth");
+const { RepositoryPolicy } = require("./security/repository-policy");
+const {
+  sanitizeGraphArtifact,
+  validateSanitizedGraphArtifact,
+} = require("../../packages/graph-sanitizer");
 
 const root = path.resolve(__dirname, "../..");
 const dataFile =
@@ -21,14 +27,44 @@ const publicRoot =
   process.env.PUBLIC_ROOT || path.join(root, "frontend", "dist");
 const host = process.env.HOST || "127.0.0.1";
 const port = Number(process.env.PORT || 17300);
+if (!["127.0.0.1", "localhost", "::1"].includes(host)) {
+  throw new Error(
+    "VisionOwl Local API must bind to a loopback host. Use the separate Cloud Backend for network access.",
+  );
+}
+
+const localToken = process.env.VISIONOWL_LOCAL_TOKEN || createLocalApiToken();
+const configuredOrigins = String(process.env.VISIONOWL_ALLOWED_ORIGINS || "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
+const localAuth = new LocalAuth({
+  token: localToken,
+  allowedOrigins: [
+    `http://${host}:${port}`,
+    "http://127.0.0.1:4173",
+    "http://localhost:4173",
+    ...configuredOrigins,
+  ],
+  allowedHosts: [
+    `${host}:${port}`,
+    `127.0.0.1:${port}`,
+    `localhost:${port}`,
+    `[::1]:${port}`,
+  ],
+});
+const repositoryPolicy = new RepositoryPolicy();
 
 const store = new VisionStore(dataFile);
 store.failInterruptedJobs();
-const analysis = new AnalysisService(store);
+const analysis = new AnalysisService(store, { repositoryPolicy });
 const dingtalk = new DingTalkDocuments();
-const documentAutomation = new DocumentAutomationService(store, dingtalk);
+const documentAutomation = new DocumentAutomationService(store, dingtalk, {
+  repositoryPolicy,
+});
 const repositoryWatcher = new RepositoryWatcher(store, documentAutomation, {
   intervalMs: Number(process.env.VISIONOWL_REPO_WATCH_INTERVAL_MS || 10000),
+  repositoryPolicy,
 });
 if (String(process.env.VISIONOWL_ENABLE_REPO_WATCHER || "true") !== "false") {
   repositoryWatcher.start();
@@ -49,12 +85,27 @@ function required(value, name) {
   return value.trim();
 }
 
+function authorizedProjects() {
+  return store.listProjects().filter((project) => {
+    try {
+      repositoryPolicy.authorizeProject(project);
+      return true;
+    } catch (_error) {
+      return false;
+    }
+  });
+}
+
 async function automationSnapshot(project, settings) {
   try {
+    const authorization = repositoryPolicy.authorizeProject(project, {
+      branch: settings.branch || project.branch || undefined,
+    });
     const state = await repositoryState(
-      project.repoPath,
+      authorization.path,
       settings.branch || project.branch,
     );
+    repositoryPolicy.assertBranch(authorization, state.branch);
     return { ...settings, currentCommit: state.commit };
   } catch (_error) {
     return settings;
@@ -112,11 +163,14 @@ function chatAnswerAsText(answer) {
     .join("\n");
 }
 
-function prepareEntityChat(projectId, body) {
+async function prepareEntityChat(projectId, body) {
   const project = store.getProject(projectId);
   if (!project) {
     throw Object.assign(new Error("Project was not found."), { status: 404 });
   }
+  const authorization = repositoryPolicy.authorizeProject(project);
+  const state = await repositoryState(authorization.path, project.branch);
+  repositoryPolicy.assertBranch(authorization, state.branch);
   const entityId = required(body.entityId, "entityId");
   const question = required(body.question, "question");
   const context =
@@ -181,7 +235,13 @@ function prepareEntityChat(projectId, body) {
         ),
       })),
   };
-  return { project, context, graphContext, question, conversation };
+  return {
+    project: { ...project, repoPath: authorization.path },
+    context,
+    graphContext,
+    question,
+    conversation,
+  };
 }
 
 async function answerEntityChat(prepared, onProgress) {
@@ -330,9 +390,14 @@ async function route(request, response) {
   const pathname = requestUrl.pathname;
 
   if (request.method === "OPTIONS") {
+    localAuth.assertPreflight(request);
     response.writeHead(204, headers());
     response.end();
     return;
+  }
+
+  if (pathname.startsWith("/api") || pathname === "/health") {
+    localAuth.assertRequest(request, requestUrl);
   }
 
   if (request.method === "GET" && m5Compatibility(request, response, requestUrl)) {
@@ -347,6 +412,7 @@ async function route(request, response) {
       plugins: plugins.list().length,
       runtimePluginsEnabled,
       codexEnabled: String(process.env.VISIONOWL_CODEX_ENABLED || "true") !== "false",
+      repositoryAccess: "user-selected-local-git",
       time: new Date().toISOString(),
     });
     return;
@@ -377,28 +443,55 @@ async function route(request, response) {
   }
 
   if (request.method === "GET" && pathname === "/api/projects") {
-    sendJson(response, 200, store.listProjects());
+    sendJson(response, 200, authorizedProjects());
     return;
+  }
+
+  const scopedProjectMatch = pathname.match(/^\/api\/projects\/([^/]+)(?:\/|$)/);
+  if (scopedProjectMatch) {
+    const scopedProject = store.getProject(
+      decodeURIComponent(scopedProjectMatch[1]),
+    );
+    if (scopedProject) repositoryPolicy.authorizeProject(scopedProject);
   }
 
   if (request.method === "POST" && pathname === "/api/projects") {
     const body = await readJson(request);
-    const repoPath = path.resolve(required(body.repoPath, "repoPath"));
-    if (!fs.existsSync(repoPath) || !fs.statSync(repoPath).isDirectory()) {
-      throw Object.assign(new Error("repoPath must point to a readable directory."), {
-        status: 400,
-      });
-    }
+    const authorization = repositoryPolicy.authorizeRepository(
+      required(body.repoPath, "repoPath"),
+    );
+    const state = await repositoryState(authorization.path);
+    repositoryPolicy.assertBranch(authorization, state.branch);
     const project = store.createProject({
       name: required(body.name, "name"),
       description: String(body.description || ""),
-      repoPath,
+      repoPath: authorization.path,
+      branch: state.branch,
+      commit: state.commit,
+      cloudProjectId: body.cloudProjectId
+        ? required(body.cloudProjectId, "cloudProjectId")
+        : undefined,
     });
     sendJson(response, 201, project);
     return;
   }
 
   const projectId = projectRoute(pathname);
+  const cloudBindingProjectId = projectRoute(pathname, "cloud-binding");
+  if (request.method === "PATCH" && cloudBindingProjectId) {
+    const body = await readJson(request);
+    const project = store.bindCloudProject(
+      cloudBindingProjectId,
+      required(body.cloudProjectId, "cloudProjectId"),
+    );
+    sendJson(
+      response,
+      project ? 200 : 404,
+      project || { error: "project_not_found" },
+    );
+    return;
+  }
+
   if (request.method === "GET" && projectId) {
     const project = store.getProject(projectId);
     sendJson(
@@ -417,6 +510,29 @@ async function route(request, response) {
       return;
     }
     sendJson(response, 200, store.getGraph(graphProjectId));
+    return;
+  }
+
+  const sanitizedGraphProjectId = projectRoute(pathname, "graph/sanitized");
+  if (request.method === "GET" && sanitizedGraphProjectId) {
+    const project = store.getProject(sanitizedGraphProjectId);
+    if (!project) {
+      sendJson(response, 404, { error: "project_not_found" });
+      return;
+    }
+    const authorization = repositoryPolicy.authorizeProject(project);
+    const artifact = sanitizeGraphArtifact({
+      project,
+      graph: store.getGraph(sanitizedGraphProjectId),
+      repositoryRoot: authorization.path,
+    });
+    sendJson(
+      response,
+      200,
+      validateSanitizedGraphArtifact(artifact, {
+        projectId: sanitizedGraphProjectId,
+      }),
+    );
     return;
   }
 
@@ -593,6 +709,7 @@ async function route(request, response) {
       writeSseEvent(response, "complete", result);
     } catch (error) {
       writeSseEvent(response, "error", {
+        code: error.code || "document_generation_failed",
         message: error.message,
         requestId: randomUUID(),
       });
@@ -622,6 +739,7 @@ async function route(request, response) {
       writeSseEvent(response, "complete", result);
     } catch (error) {
       writeSseEvent(response, "error", {
+        code: error.code || "document_refresh_failed",
         message: error.message,
         requestId: randomUUID(),
       });
@@ -633,7 +751,7 @@ async function route(request, response) {
   const streamChatProjectId = projectRoute(pathname, "chat/stream");
   if (request.method === "POST" && streamChatProjectId) {
     const body = await readJson(request);
-    const prepared = prepareEntityChat(streamChatProjectId, body);
+    const prepared = await prepareEntityChat(streamChatProjectId, body);
     writeSseHead(response);
     writeSseEvent(response, "progress", {
       phase: "context",
@@ -660,7 +778,7 @@ async function route(request, response) {
   const chatProjectId = projectRoute(pathname, "chat");
   if (request.method === "POST" && chatProjectId) {
     const body = await readJson(request);
-    const prepared = prepareEntityChat(chatProjectId, body);
+    const prepared = await prepareEntityChat(chatProjectId, body);
     const result = await answerEntityChat(prepared);
     sendJson(response, 200, result);
     return;
@@ -679,7 +797,8 @@ const server = http.createServer((request, response) => {
     console.error(error);
     if (!response.headersSent) {
       sendJson(response, error.status || 500, {
-        error: error.status ? "invalid_request" : "internal_error",
+        error:
+          error.code || (error.status ? "invalid_request" : "internal_error"),
         message: error.message,
         requestId: randomUUID(),
       });
@@ -691,6 +810,12 @@ const server = http.createServer((request, response) => {
 
 server.listen(port, host, () => {
   console.log(`VisionOwl API listening on http://${host}:${port}`);
+  console.log("VisionOwl accepts user-selected local Git repositories.");
+  if (!process.env.VISIONOWL_LOCAL_TOKEN) {
+    console.log(
+      `Open the local UI with token: http://${host}:${port}/?localToken=${encodeURIComponent(localToken)}`,
+    );
+  }
 });
 
 let shuttingDown = false;

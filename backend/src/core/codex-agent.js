@@ -4,6 +4,8 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { spawn } = require("node:child_process");
+const { resolveExistingPathInside } = require("../security/path-guard");
+const { safeChildEnvironment } = require("../security/child-environment");
 
 function codexBinary() {
   if (process.env.CODEX_BIN) return process.env.CODEX_BIN;
@@ -102,7 +104,7 @@ function runCodex({
         ];
     const child = spawn(codexBinary(), args, {
       cwd: repoPath,
-      env: { ...process.env, ...env },
+      env: safeChildEnvironment(env),
       stdio: ["pipe", "pipe", "pipe"],
     });
     let stdout = "";
@@ -405,10 +407,13 @@ async function askAboutEntity({
     .slice(0, 8);
 
   const sourceSnippets = evidence.flatMap((item) => {
-    const root = path.resolve(repoPath);
-    const absolute = path.resolve(root, item.file);
-    if (absolute !== root && !absolute.startsWith(`${root}${path.sep}`)) return [];
-    if (!fs.existsSync(absolute) || !fs.statSync(absolute).isFile()) return [];
+    let absolute;
+    try {
+      absolute = resolveExistingPathInside(repoPath, item.file);
+    } catch (_error) {
+      return [];
+    }
+    if (!fs.statSync(absolute).isFile()) return [];
     const lines = fs.readFileSync(absolute, "utf8").split(/\r?\n/);
     const line = Math.max(1, Number(item.line) || 1);
     const start = Math.max(1, line - 3);

@@ -1,12 +1,14 @@
 "use strict";
 
 const { execFile } = require("node:child_process");
+const { realDirectory } = require("../security/path-guard");
 
 function git(repoPath, args) {
+  const safeRepoPath = realDirectory(repoPath);
   return new Promise((resolve, reject) => {
     execFile(
       "git",
-      ["-C", repoPath, ...args],
+      ["-C", safeRepoPath, ...args],
       { encoding: "utf8", maxBuffer: 16 * 1024 * 1024 },
       (error, stdout, stderr) => {
         if (error) {
@@ -26,6 +28,11 @@ function git(repoPath, args) {
 
 async function repositoryState(repoPath, preferredBranch) {
   const currentBranch = await git(repoPath, ["branch", "--show-current"]);
+  if (preferredBranch && currentBranch && currentBranch !== preferredBranch) {
+    throw new Error(
+      `Repository is checked out on "${currentBranch}", but project policy requires "${preferredBranch}".`,
+    );
+  }
   const branch = preferredBranch || currentBranch || "master";
   const commit = await git(repoPath, ["rev-parse", `refs/heads/${branch}`]);
   return { branch, commit };

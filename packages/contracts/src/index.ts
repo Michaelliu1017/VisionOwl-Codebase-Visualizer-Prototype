@@ -56,6 +56,7 @@ export type ExecutionFlow = {
 
 export type Project = {
   id: string;
+  cloudProjectId?: string;
   name: string;
   description: string;
   repoPath: string;
@@ -78,6 +79,148 @@ export type GraphVersion = {
   entities: GraphEntity[];
   relations: GraphRelation[];
   executionFlows?: ExecutionFlow[];
+};
+
+export type SanitizedSourceEvidence = Omit<SourceEvidence, "excerpt">;
+export type SanitizedGraphEntity = Omit<GraphEntity, "projectId" | "evidence"> & {
+  evidence: SanitizedSourceEvidence[];
+};
+export type SanitizedGraphRelation = Omit<
+  GraphRelation,
+  "projectId" | "evidence"
+> & {
+  evidence: SanitizedSourceEvidence[];
+};
+
+export type SanitizedGraphArtifact = {
+  schemaVersion: "1.0";
+  project: { id: string; name: string };
+  source: { branch: string; commit: string; generatedAt: ISODateString };
+  graph: {
+    entities: SanitizedGraphEntity[];
+    relations: SanitizedGraphRelation[];
+    executionFlows: ExecutionFlow[];
+  };
+};
+
+export type CloudRole = "owner" | "editor" | "viewer";
+
+export type CloudUser = {
+  id: string;
+  email: string;
+  displayName: string;
+  status: "active" | "disabled";
+  createdAt: ISODateString;
+};
+
+export type CloudSession = {
+  user: CloudUser;
+  accessToken: string;
+  refreshToken: string;
+  accessExpiresAt: ISODateString;
+  refreshExpiresAt: ISODateString;
+};
+
+export type CloudProject = {
+  id: string;
+  ownerId: string;
+  name: string;
+  description: string;
+  repositoryFingerprint?: string;
+  defaultBranch: string;
+  currentGraphVersionId?: string;
+  role: CloudRole;
+  createdAt: ISODateString;
+  updatedAt: ISODateString;
+};
+
+export type CloudProjectMember = {
+  projectId: string;
+  userId: string;
+  role: CloudRole;
+  email: string;
+  displayName: string;
+  joinedAt: ISODateString;
+  updatedAt: ISODateString;
+};
+
+export type CloudProjectInvite = {
+  id: string;
+  projectId: string;
+  role: Exclude<CloudRole, "owner">;
+  maxUses: number;
+  useCount: number;
+  expiresAt: ISODateString;
+  revokedAt?: ISODateString;
+  createdAt: ISODateString;
+  token?: string;
+};
+
+export type CloudGraphVersion = {
+  id: string;
+  projectId: string;
+  parentVersionId?: string;
+  source: "local-agent" | "shared-draft" | "import";
+  branch: string;
+  commit: string;
+  status: "uploading" | "validating" | "ready" | "active" | "failed" | "archived";
+  checksum: string;
+  artifactUri?: string;
+  engineVersion?: string;
+  skillVersion?: string;
+  createdBy: string;
+  createdAt: ISODateString;
+  activatedAt?: ISODateString;
+  artifact?: SanitizedGraphArtifact;
+};
+
+export type CloudDocument = {
+  id: string;
+  projectId: string;
+  stableEntityId?: string;
+  scope: "global" | "module";
+  provider: "link" | "dingtalk" | "local";
+  externalId?: string;
+  title: string;
+  url: string;
+  summary: string;
+  syncStatus: "linked" | "synced" | "stale" | "error";
+  version: number;
+  createdBy: string;
+  createdAt: ISODateString;
+  updatedAt: ISODateString;
+};
+
+export type CloudAnnotation = {
+  id: string;
+  projectId: string;
+  stableEntityId: string;
+  author: string;
+  body: string;
+  version: number;
+  createdBy: string;
+  createdAt: ISODateString;
+  updatedAt: ISODateString;
+};
+
+export type CloudRealtimeEvent = {
+  sequence: number;
+  projectId: string;
+  type:
+    | "project.member.joined"
+    | "project.member.updated"
+    | "project.member.removed"
+    | "graph.version.ready"
+    | "graph.version.activated"
+    | "document.created"
+    | "document.updated"
+    | "document.deleted"
+    | "annotation.created"
+    | "annotation.updated"
+    | "annotation.deleted";
+  payload: Record<string, unknown>;
+  actorId?: string;
+  createdAt: ISODateString;
 };
 
 export type AnalysisPhase =

@@ -16,6 +16,8 @@ export function GlobalDocumentShelf({
   showAllDocuments,
   onToggleAll,
   onChanged,
+  onAddDocument,
+  canEdit = true,
 }: {
   projectId: string;
   documents: DocumentBinding[];
@@ -23,6 +25,13 @@ export function GlobalDocumentShelf({
   showAllDocuments: boolean;
   onToggleAll: () => void;
   onChanged: () => void;
+  onAddDocument?: (input: {
+    provider: "link" | "dingtalk" | "local";
+    title: string;
+    url: string;
+    summary?: string;
+  }) => Promise<unknown>;
+  canEdit?: boolean;
 }) {
   const [formOpen, setFormOpen] = useState(false);
   const [title, setTitle] = useState("");
@@ -62,15 +71,17 @@ export function GlobalDocumentShelf({
             暂无全局文档
           </span>
         )}
-        <button
-          className="vision-global-documents__add"
-          type="button"
-          title="挂载全局文档"
-          aria-label="挂载全局文档"
-          onClick={() => setFormOpen((current) => !current)}
-        >
-          {formOpen ? <X size={14} /> : <Plus size={14} />}
-        </button>
+        {canEdit && (
+          <button
+            className="vision-global-documents__add"
+            type="button"
+            title="挂载全局文档"
+            aria-label="挂载全局文档"
+            onClick={() => setFormOpen((current) => !current)}
+          >
+            {formOpen ? <X size={14} /> : <Plus size={14} />}
+          </button>
+        )}
       </div>
 
       <button
@@ -89,14 +100,14 @@ export function GlobalDocumentShelf({
         </span>
       </button>
 
-      {formOpen && (
+      {canEdit && formOpen && (
         <form
           className="vision-global-document-form"
           onSubmit={async (event) => {
             event.preventDefault();
             setSaving(true);
             try {
-              await visionApi.addProjectDocument(projectId, {
+              await (onAddDocument || ((input) => visionApi.addProjectDocument(projectId, input)))({
                 provider: url.includes("alidocs") ? "dingtalk" : "link",
                 title,
                 url,

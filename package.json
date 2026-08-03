@@ -5,6 +5,7 @@
   "workspaces": [
     "frontend",
     "backend",
+    "cloud-backend",
     "desktop",
     "packages/*"
   ],
@@ -12,8 +13,11 @@
     "dev": "node scripts/dev.mjs",
     "dev:web": "npm run dev --workspace @visionowl/web",
     "dev:api": "npm run dev --workspace @visionowl/api",
+    "dev:cloud": "npm run dev --workspace @visionowl/cloud-backend",
+    "start:cloud": "npm run start --workspace @visionowl/cloud-backend",
+    "migrate:cloud": "npm run migrate --workspace @visionowl/cloud-backend",
     "build": "npm run build --workspace @visionowl/web",
-    "test": "npm run test --workspace @visionowl/api && npm run build --workspace @visionowl/web",
+    "test": "npm run test --workspace @visionowl/api && npm run test --workspace @visionowl/cloud-backend && npm run build --workspace @visionowl/web",
     "start": "npm run start --workspace @visionowl/api",
     "desktop": "npm run build && npm run start --workspace @visionowl/desktop"
   },

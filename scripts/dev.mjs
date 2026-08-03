@@ -1,15 +1,19 @@
 import { spawn } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import process from "node:process";
 
 const root = new URL("../", import.meta.url).pathname;
+const localApiToken = randomBytes(32).toString("base64url");
 const processes = [
   spawn("npm", ["run", "dev", "--workspace", "@visionowl/api"], {
     cwd: root,
     stdio: "inherit",
+    env: { ...process.env, VISIONOWL_LOCAL_TOKEN: localApiToken },
   }),
   spawn("npm", ["run", "dev", "--workspace", "@visionowl/web"], {
     cwd: root,
     stdio: "inherit",
+    env: { ...process.env, VITE_VISIONOWL_LOCAL_TOKEN: localApiToken },
   }),
 ];
 

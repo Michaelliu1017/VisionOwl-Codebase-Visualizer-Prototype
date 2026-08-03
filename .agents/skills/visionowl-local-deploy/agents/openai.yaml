@@ -1,0 +1,4 @@
+interface:
+  display_name: "Deploy VisionOwl Locally"
+  short_description: "Install, verify, and launch a local VisionOwl stack"
+  default_prompt: "Set up this cloned VisionOwl repository as a secure local desktop development stack, verify it, and launch the app."

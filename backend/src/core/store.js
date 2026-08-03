@@ -50,6 +50,7 @@ class VisionStore {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS projects (
         id TEXT PRIMARY KEY,
+        cloud_project_id TEXT,
         name TEXT NOT NULL,
         description TEXT NOT NULL DEFAULT '',
         repo_path TEXT NOT NULL,
@@ -153,22 +154,74 @@ class VisionStore {
         FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
       );
     `);
+
+    const projectColumns = this.db
+      .prepare("PRAGMA table_info(projects)")
+      .all()
+      .map((column) => column.name);
+    if (!projectColumns.includes("cloud_project_id")) {
+      this.db.exec("ALTER TABLE projects ADD COLUMN cloud_project_id TEXT;");
+    }
+    this.db.exec(`
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_projects_cloud_project_id
+      ON projects(cloud_project_id)
+      WHERE cloud_project_id IS NOT NULL;
+    `);
   }
 
   close() {
     this.db.close();
   }
 
-  createProject({ name, description = "", repoPath }) {
+  createProject({
+    name,
+    description = "",
+    repoPath,
+    branch,
+    commit,
+    cloudProjectId,
+  }) {
     const id = randomUUID();
     const now = isoNow();
     this.db
       .prepare(
         `INSERT INTO projects
-          (id, name, description, repo_path, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?)`,
+          (id, cloud_project_id, name, description, repo_path, branch, commit_hash, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
-      .run(id, name, description, repoPath, now, now);
+      .run(
+        id,
+        cloudProjectId || null,
+        name,
+        description,
+        repoPath,
+        branch || null,
+        commit || null,
+        now,
+        now,
+      );
+    return this.getProject(id);
+  }
+
+  bindCloudProject(id, cloudProjectId) {
+    const current = this.getProject(id);
+    if (!current) return null;
+    const conflict = this.db
+      .prepare(
+        "SELECT id FROM projects WHERE cloud_project_id = ? AND id <> ?",
+      )
+      .get(cloudProjectId, id);
+    if (conflict) {
+      throw Object.assign(
+        new Error("This cloud Project is already bound to another local repository."),
+        { status: 409, code: "cloud_project_already_bound" },
+      );
+    }
+    this.db
+      .prepare(
+        "UPDATE projects SET cloud_project_id = ?, updated_at = ? WHERE id = ?",
+      )
+      .run(cloudProjectId, isoNow(), id);
     return this.getProject(id);
   }
 
@@ -203,6 +256,7 @@ class VisionStore {
   projectRow(row) {
     return {
       id: row.id,
+      cloudProjectId: row.cloud_project_id || undefined,
       name: row.name,
       description: row.description,
       repoPath: row.repo_path,

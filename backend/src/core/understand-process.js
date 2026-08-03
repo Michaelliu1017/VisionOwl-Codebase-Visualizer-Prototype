@@ -1,6 +1,7 @@
 "use strict";
 
 const { spawn } = require("node:child_process");
+const { safeChildEnvironment } = require("../security/child-environment");
 
 function runProcess({
   command,
@@ -14,7 +15,7 @@ function runProcess({
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, {
       cwd,
-      env: { ...process.env, ...env },
+      env: safeChildEnvironment(env),
       stdio: ["ignore", "pipe", "pipe"],
     });
     let stdout = "";

@@ -6,7 +6,7 @@ VisionOwl turns a source repository into an interactive knowledge map. It combin
 
 Unlike architecture diagrams that quickly drift away from the code, VisionOwl keeps every generated relationship tied to source evidence such as files, symbols, and line numbers.
 
-> VisionOwl is currently an early-stage local application. It supports commit-aware local document maintenance through an authenticated DWS CLI; multi-user collaboration and remote repository connectors are still planned.
+> VisionOwl now combines a local-first Electron analyzer with a separate Cloud Backend for shared Projects. Source code stays inside the authorized local analyzer; collaborators receive a sanitized, versioned graph plus shared documents and annotations.
 
 ## Why VisionOwl?
 
@@ -24,7 +24,7 @@ VisionOwl treats source-derived facts as the foundation. AI can name, summarize,
 
 ### Evidence-backed architecture graph
 
-- Imports any readable local repository.
+- Accepts any local Git repository explicitly selected by the user in the desktop application.
 - Uses the deterministic stages from [Understand Anything](https://github.com/Egonex-AI/Understand-Anything) to scan files, build import maps, detect symbols, cluster code, and merge a knowledge graph.
 - Detects repository-level domains, internal modules, infrastructure dependencies, and evidence-backed cross-module flows.
 - Preserves source citations on graph entities and relationships.
@@ -67,6 +67,15 @@ VisionOwl treats source-derived facts as the foundation. AI can name, summarize,
 - Includes an Electron shell with a native repository picker.
 - Keeps filesystem access in the Electron main process and exposes only a restricted preload API.
 
+### Team cloud workspace
+
+- Creates shared Projects with Owner, Editor, and Viewer roles.
+- Uses revocable invitation tokens only for joining; normal access uses per-user sessions.
+- Publishes graph versions after local and server-side sanitization.
+- Synchronizes graphs, documents, annotations, membership, and version changes through WebSocket events.
+- Encrypts the Electron cloud session with the operating system credential store.
+- Runs as an isolated PostgreSQL-backed service with no filesystem or Shell endpoint.
+
 ## How It Works
 
 ```mermaid
@@ -84,6 +93,10 @@ flowchart LR
     API["VisionOwl API + SSE"]
     UI["React Flow workspace"]
     Desktop["Electron desktop shell"]
+    Sanitizer["Graph Sanitizer"]
+    CloudAPI["Cloud Backend + WebSocket"]
+    Postgres[("PostgreSQL / RDS")]
+    Team["Collaborator Electron clients"]
 
     Repository --> Scan
     Scan --> Structure
@@ -95,6 +108,10 @@ flowchart LR
     API --> UI
     Desktop --> API
     Desktop --> UI
+    Store --> Sanitizer
+    Sanitizer -->|"sanitized graph version"| CloudAPI
+    CloudAPI --> Postgres
+    CloudAPI <--> Team
 ```
 
 The default **Direct Understand Engine** executes deterministic Understand Anything scripts directly, then asks Codex only for bounded semantic work. This is faster and easier to observe than asking one outer agent to orchestrate the entire analysis.
@@ -136,7 +153,7 @@ Open [http://127.0.0.1:4173](http://127.0.0.1:4173). The API runs on `http://127
 ### 3. Analyze a repository
 
 1. Select **Import Repository**.
-2. Enter a project name and choose or type an absolute repository path.
+2. Enter a project name and choose a local Git repository.
 3. Start the analysis.
 4. Follow the visible analysis phases while the factual graph is built and enriched.
 5. Explore the architecture, select a module, inspect its evidence, attach knowledge, or ask Codex a question.
@@ -158,6 +175,14 @@ npm run desktop
 
 This command builds the web application, starts the local API, and opens VisionOwl in Electron. The desktop database is stored in the application user-data directory.
 
+VisionOwl now opens directly into the team workspace. An Owner creates a Project and selects an authorized local repository in one flow; the hidden Local Agent analyzes it, removes source excerpts and host paths, uploads a versioned graph, and activates it for the team. Owners can reanalyze and sync, create invitations, and manage members. Editors maintain documents and annotations, while Viewers remain read-only. Collaborators never need access to the Owner's local repository.
+
+## Cloud Backend
+
+For a memory-backed development server, run `npm run dev:cloud`. For PostgreSQL, set `DATABASE_URL`, run `npm run migrate:cloud`, then run `npm run start:cloud`.
+
+Container definitions are in `infra/`. The demonstration stack includes PostgreSQL, the Cloud Backend, and an Nginx gateway. The production definition expects an RDS PostgreSQL private endpoint. See [VisionOwl云端部署手册.md](VisionOwl云端部署手册.md) for the ECS and RDS procedure.
+
 ## Production-style Local Run
 
 ```bash
@@ -165,19 +190,22 @@ npm run build
 npm run start
 ```
 
-Open [http://127.0.0.1:17300](http://127.0.0.1:17300). In this mode, the API serves the production frontend build.
+Open the tokenized local URL printed by the server. In this mode, the API serves the production frontend build and generates a new Local Token for that process.
 
 ## Useful Commands
 
 | Command | Purpose |
 |---|---|
 | `npm run dev` | Start the API and Vite development server |
-| `npm run dev:web` | Start only the frontend |
-| `npm run dev:api` | Start only the backend with file watching |
+| `npm run dev:web` | Start only the frontend; set the same `VITE_VISIONOWL_LOCAL_TOKEN` used by the API |
+| `npm run dev:api` | Start only the backend with file watching; set `VISIONOWL_LOCAL_TOKEN` when pairing it with Vite |
 | `npm run build` | Type-check and build the frontend |
 | `npm test` | Run backend tests and the frontend production build |
 | `npm run start` | Run the API and serve the built frontend |
 | `npm run desktop` | Build and launch the Electron application |
+| `npm run dev:cloud` | Run the Cloud Backend with an in-memory store |
+| `npm run migrate:cloud` | Apply pending PostgreSQL migrations |
+| `npm run start:cloud` | Run the PostgreSQL-backed Cloud Backend |
 
 ## Configuration
 
@@ -187,6 +215,7 @@ Open [http://127.0.0.1:17300](http://127.0.0.1:17300). In this mode, the API ser
 | `PORT` | `17300` | API port |
 | `PUBLIC_ROOT` | `frontend/dist` | Static frontend directory |
 | `VISIONOWL_DB` | `data/visionowl.db` | SQLite database path |
+| `VISIONOWL_LOCAL_TOKEN` | Random per launch | Local API session token; Electron and `npm run dev` create and pass it automatically |
 | `VISIONOWL_CODEX_ENABLED` | `true` | Set to `false` for deterministic analysis only |
 | `CODEX_BIN` | Auto-detected | Explicit Codex executable path |
 | `PYTHON_BIN` | Auto-detected | Python 3.10+ executable used for graph merging |
@@ -199,6 +228,14 @@ Open [http://127.0.0.1:17300](http://127.0.0.1:17300). In this mode, the API ser
 | `DWS_BIN` | Auto-detected | Explicit DWS CLI executable path |
 | `VISIONOWL_DINGTALK_FOLDER` | DWS default | Folder ID used when creating DingTalk documents |
 | `VISIONOWL_DINGTALK_WORKSPACE` | DWS default | Workspace ID used when no folder is configured |
+| `VISIONOWL_CLOUD_API_URL` | `http://127.0.0.1:17800` | Initial Cloud API address; users can change it on the Electron login screen |
+| `DATABASE_URL` | None | PostgreSQL connection URL used only by the Cloud Backend |
+| `PGSSL` | `false` | Enable strict TLS verification for PostgreSQL and migrations; production RDS Compose defaults it to `true` |
+| `PGSSL_CA_FILE` | None | Optional CA bundle path inside the Cloud container |
+| `VISIONOWL_ALLOWED_ORIGINS` | Local Electron/Vite origins | Explicit renderer origins accepted by the Cloud Backend |
+| `VISIONOWL_ACCESS_TOKEN_TTL_SECONDS` | `3600` | Cloud access-token lifetime |
+| `VISIONOWL_REFRESH_TOKEN_TTL_SECONDS` | `2592000` | Cloud refresh-token lifetime |
+| `VISIONOWL_GRAPH_MAX_BYTES` | `5000000` | Maximum sanitized graph upload size |
 
 Example deterministic-only run:
 
@@ -211,9 +248,12 @@ VISIONOWL_CODEX_ENABLED=false npm run dev
 ```text
 visionowl/
 ├── backend/                  HTTP API, analysis engine, SQLite, Codex adapter
+├── cloud-backend/            Users, Projects, RBAC, graph versions, WebSocket, PostgreSQL
 ├── desktop/                  Electron main process and restricted preload
 ├── frontend/                 React, Vite, React Flow, and ELK graph UI
+├── infra/                    Docker Compose, Nginx gateway, deployment templates
 ├── packages/contracts/       Shared TypeScript contracts
+├── packages/graph-sanitizer/ Upload-safe graph conversion and validation
 ├── scripts/                  Development process orchestration
 ├── skills/
 │   ├── graph-layout/         Reusable evidence-graph layout guidance
@@ -233,9 +273,15 @@ VisionOwl follows several constraints to keep the graph useful and auditable:
 4. No synthetic latency, QPS, error rate, or health status is presented as observed data.
 5. Analysis artifacts are versioned so a project can retain its last valid graph while a new scan is running.
 
+## Local Security Boundary
+
+VisionOwl's source-reading backend is a Local Agent, not a public web service. It binds only to a loopback host, requires a high-entropy session token, and validates Host and Origin. Users select local Git repositories at runtime; VisionOwl rejects filesystem roots and the user home directory, verifies the repository with Git, and pins each Project to the branch selected at creation. Analysis subprocesses inherit a reduced environment instead of all host credentials.
+
+The endpoint `/api/projects/:projectId/graph/sanitized` produces the future cloud-upload artifact. It removes source excerpts and host paths, converts source locations to repository-relative paths, drops sensitive metadata keys, checks relation integrity, and rejects credential-shaped content.
+
 ## Current Limitations
 
-- The application is local-first and has no user accounts or project authorization.
+- The first cloud release stores graph JSON in PostgreSQL. Moving large artifacts to OSS is an optional scale step and is not required for the current 5 MB limit.
 - DingTalk creation and updates currently depend on a locally installed and authenticated DWS CLI.
 - Debug synchronization watches local commits only while the VisionOwl backend is running; remote push webhooks are not implemented.
 - Aone and GitLab repository connectors are not implemented.
@@ -243,7 +289,7 @@ VisionOwl follows several constraints to keep the graph useful and auditable:
 - The Electron package is intended for development and has not yet been signed or distributed as an installer.
 - The optional historical M5 runtime adapter is disabled by default and is not part of the primary product flow.
 
-Do not expose the current API directly to an untrusted network. It accepts local repository paths and does not yet provide authentication or authorization.
+Do not expose the Local Agent directly to a network. Multi-user access must use the separate Cloud Backend; only the sanitized graph endpoint bridges the two trust zones.
 
 ## Roadmap
 

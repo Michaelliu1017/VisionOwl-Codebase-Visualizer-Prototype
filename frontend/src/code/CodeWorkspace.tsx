@@ -177,8 +177,9 @@ export function CodeWorkspace() {
 
   useEffect(() => {
     if (!projectId || !analysisRunning) return;
-    const source = visionApi.events(projectId);
-    source.addEventListener("analysis", (raw) => {
+    let source: EventSource | undefined;
+    let cancelled = false;
+    const handleAnalysis = (raw: Event) => {
       const event = JSON.parse((raw as MessageEvent<string>).data) as AnalysisEvent;
       setAnalysisEvents((current) =>
         current.some((item) => item.id === event.id)
@@ -219,8 +220,22 @@ export function CodeWorkspace() {
       if (event.phase === "completed" || event.phase === "failed") {
         void Promise.all([loadProject(), loadProjects()]);
       }
-    });
-    return () => source.close();
+    };
+    void visionApi
+      .events(projectId)
+      .then((nextSource) => {
+        if (cancelled) {
+          nextSource.close();
+          return;
+        }
+        source = nextSource;
+        source.addEventListener("analysis", handleAnalysis);
+      })
+      .catch((loadError) => setError((loadError as Error).message));
+    return () => {
+      cancelled = true;
+      source?.close();
+    };
   }, [analysisRunning, loadProject, loadProjects, projectId]);
 
   useEffect(() => {

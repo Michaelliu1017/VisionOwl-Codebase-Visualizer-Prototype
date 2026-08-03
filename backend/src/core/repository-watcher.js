@@ -3,9 +3,17 @@
 const { repositoryState } = require("./git-repository");
 
 class RepositoryWatcher {
-  constructor(store, documents, { intervalMs = 10000 } = {}) {
+  constructor(
+    store,
+    documents,
+    { intervalMs = 10000, repositoryPolicy } = {},
+  ) {
+    if (!repositoryPolicy) {
+      throw new Error("RepositoryWatcher requires a RepositoryPolicy.");
+    }
     this.store = store;
     this.documents = documents;
+    this.repositoryPolicy = repositoryPolicy;
     this.intervalMs = intervalMs;
     this.timer = undefined;
     this.running = new Set();
@@ -33,7 +41,9 @@ class RepositoryWatcher {
         message: "Debug 文档同步未启用",
       });
     }
-    const state = await repositoryState(project.repoPath, project.branch);
+    const authorization = this.repositoryPolicy.authorizeProject(project);
+    const state = await repositoryState(authorization.path, project.branch);
+    this.repositoryPolicy.assertBranch(authorization, state.branch);
     return this.store.updateAutomationSettings(projectId, {
       debugMode: true,
       branch: state.branch,
@@ -51,10 +61,14 @@ class RepositoryWatcher {
       if (!project) continue;
       this.running.add(settings.projectId);
       try {
+        const authorization = this.repositoryPolicy.authorizeProject(project, {
+          branch: settings.branch || project.branch || undefined,
+        });
         const state = await repositoryState(
-          project.repoPath,
+          authorization.path,
           settings.branch || project.branch,
         );
+        this.repositoryPolicy.assertBranch(authorization, state.branch);
         if (!settings.observedCommit) {
           this.store.updateAutomationSettings(project.id, {
             branch: state.branch,

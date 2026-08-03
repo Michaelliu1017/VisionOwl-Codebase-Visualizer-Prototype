@@ -14,12 +14,42 @@ import type {
   GraphVersion,
   Project,
   ProjectAutomationSettings,
+  SanitizedGraphArtifact,
 } from "@visionowl/contracts";
+import { localApiEventSource, localApiFetch } from "./local-api";
 
-const API_BASE = (import.meta.env.VITE_VISIONOWL_API_URL || "").replace(/\/$/, "");
+export class VisionApiError extends Error {
+  readonly code?: string;
+  readonly status?: number;
+
+  constructor(message: string, options: { code?: string; status?: number } = {}) {
+    super(message);
+    this.name = "VisionApiError";
+    this.code = options.code;
+    this.status = options.status;
+  }
+}
+
+function apiError(
+  payload: { message?: string; error?: string; code?: string },
+  fallback: string,
+  status?: number,
+) {
+  return new VisionApiError(payload.message || payload.error || fallback, {
+    code: payload.code,
+    status,
+  });
+}
+
+export function isDwsAuthRequired(error: unknown) {
+  return (
+    (error instanceof VisionApiError && error.code === "dws_auth_required") ||
+    (error instanceof Error && error.message.includes("DWS 尚未登录"))
+  );
+}
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, {
+  const response = await localApiFetch(path, {
     ...options,
     headers: {
       "Content-Type": "application/json",
@@ -28,7 +58,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
-    throw new Error(payload.message || payload.error || `Request failed: ${response.status}`);
+    throw apiError(payload, `Request failed: ${response.status}`, response.status);
   }
   return payload as T;
 }
@@ -43,8 +73,8 @@ async function streamChat(
   },
   onProgress: (progress: ChatProgress) => void,
 ) {
-  const response = await fetch(
-    `${API_BASE}/api/projects/${encodeURIComponent(projectId)}/chat/stream`,
+  const response = await localApiFetch(
+    `/api/projects/${encodeURIComponent(projectId)}/chat/stream`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -53,9 +83,7 @@ async function streamChat(
   );
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
-    throw new Error(
-      payload.message || payload.error || `Request failed: ${response.status}`,
-    );
+    throw apiError(payload, `Request failed: ${response.status}`, response.status);
   }
   if (!response.body) throw new Error("Streaming response body is unavailable.");
 
@@ -76,7 +104,7 @@ async function streamChat(
     if (event === "progress") onProgress(payload as ChatProgress);
     if (event === "complete") completion = payload as ChatCompletion;
     if (event === "error") {
-      throw new Error(payload.message || "Codex stream failed.");
+      throw apiError(payload, "Codex stream failed.");
     }
   };
 
@@ -102,8 +130,8 @@ async function streamDocumentGeneration(
   input: { scope?: EntityScope },
   onProgress: (progress: DocumentGenerationProgress) => void,
 ) {
-  const response = await fetch(
-    `${API_BASE}/api/projects/${encodeURIComponent(projectId)}/entities/${encodeURIComponent(entityId)}/documents/generate/stream`,
+  const response = await localApiFetch(
+    `/api/projects/${encodeURIComponent(projectId)}/entities/${encodeURIComponent(entityId)}/documents/generate/stream`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -112,9 +140,7 @@ async function streamDocumentGeneration(
   );
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
-    throw new Error(
-      payload.message || payload.error || `Request failed: ${response.status}`,
-    );
+    throw apiError(payload, `Request failed: ${response.status}`, response.status);
   }
   if (!response.body) throw new Error("Streaming response body is unavailable.");
 
@@ -133,7 +159,7 @@ async function streamDocumentGeneration(
     const payload = JSON.parse(data.join("\n"));
     if (event === "progress") onProgress(payload as DocumentGenerationProgress);
     if (event === "complete") completion = payload as DocumentGenerationCompletion;
-    if (event === "error") throw new Error(payload.message || "Document generation failed.");
+    if (event === "error") throw apiError(payload, "Document generation failed.");
   };
 
   while (true) {
@@ -158,8 +184,8 @@ async function streamDocumentRefresh(
   input: { scope?: EntityScope },
   onProgress: (progress: DocumentRefreshProgress) => void,
 ) {
-  const response = await fetch(
-    `${API_BASE}/api/projects/${encodeURIComponent(projectId)}/entities/${encodeURIComponent(entityId)}/documents/refresh/stream`,
+  const response = await localApiFetch(
+    `/api/projects/${encodeURIComponent(projectId)}/entities/${encodeURIComponent(entityId)}/documents/refresh/stream`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -168,9 +194,7 @@ async function streamDocumentRefresh(
   );
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}));
-    throw new Error(
-      payload.message || payload.error || `Request failed: ${response.status}`,
-    );
+    throw apiError(payload, `Request failed: ${response.status}`, response.status);
   }
   if (!response.body) throw new Error("Streaming response body is unavailable.");
 
@@ -189,7 +213,7 @@ async function streamDocumentRefresh(
     const payload = JSON.parse(data.join("\n"));
     if (event === "progress") onProgress(payload as DocumentRefreshProgress);
     if (event === "complete") completion = payload as DocumentRefreshCompletion;
-    if (event === "error") throw new Error(payload.message || "Document refresh failed.");
+    if (event === "error") throw apiError(payload, "Document refresh failed.");
   };
 
   while (true) {
@@ -210,13 +234,30 @@ async function streamDocumentRefresh(
 
 export const visionApi = {
   listProjects: () => request<Project[]>("/api/projects"),
-  createProject: (input: { name: string; description?: string; repoPath: string }) =>
+  createProject: (input: {
+    name: string;
+    description?: string;
+    repoPath: string;
+    cloudProjectId?: string;
+  }) =>
     request<Project>("/api/projects", {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  bindCloudProject: (projectId: string, cloudProjectId: string) =>
+    request<Project>(
+      `/api/projects/${encodeURIComponent(projectId)}/cloud-binding`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ cloudProjectId }),
+      },
+    ),
   getGraph: (projectId: string) =>
     request<GraphVersion>(`/api/projects/${encodeURIComponent(projectId)}/graph`),
+  getSanitizedGraph: (projectId: string) =>
+    request<SanitizedGraphArtifact>(
+      `/api/projects/${encodeURIComponent(projectId)}/graph/sanitized`,
+    ),
   listJobs: (projectId: string) =>
     request<AnalysisJob[]>(`/api/projects/${encodeURIComponent(projectId)}/jobs`),
   getAutomation: (projectId: string) =>
@@ -313,8 +354,8 @@ export const visionApi = {
   generateDocumentStream: streamDocumentGeneration,
   refreshDocumentsStream: streamDocumentRefresh,
   events: (projectId: string) =>
-    new EventSource(
-      `${API_BASE}/api/projects/${encodeURIComponent(projectId)}/events`,
+    localApiEventSource(
+      `/api/projects/${encodeURIComponent(projectId)}/events`,
     ),
 };
 

@@ -5,11 +5,14 @@ const os = require("node:os");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
 
-const BUNDLED_DWS = path.join(os.homedir(), ".real", ".bin", "dws", "bin", "dws");
+const QODERWORK_DWS = path.join(os.homedir(), ".qoderwork", "bin", "dws");
+const REAL_DWS = path.join(os.homedir(), ".real", ".bin", "dws", "bin", "dws");
+const DWS_AUTH_REQUIRED = "dws_auth_required";
 
 function dwsBinary() {
   if (process.env.DWS_BIN) return process.env.DWS_BIN;
-  return fs.existsSync(BUNDLED_DWS) ? BUNDLED_DWS : "dws";
+  if (fs.existsSync(QODERWORK_DWS)) return QODERWORK_DWS;
+  return fs.existsSync(REAL_DWS) ? REAL_DWS : "dws";
 }
 
 function runDws(args, { input = "", env = {} } = {}) {
@@ -96,8 +99,11 @@ class DingTalkDocuments {
   async assertAuthenticated() {
     const status = await this.status();
     if (!status.authenticated) {
-      throw new Error(
-        "DWS 尚未登录，无法创建或更新钉钉文档。请先完成 DWS OAuth 认证后重试。",
+      throw Object.assign(
+        new Error(
+          "DWS 尚未登录，无法创建或更新钉钉文档。请先完成 DWS OAuth 认证后重试。",
+        ),
+        { code: DWS_AUTH_REQUIRED, status: 401 },
       );
     }
     return status;
@@ -170,6 +176,7 @@ class DingTalkDocuments {
 }
 
 module.exports = {
+  DWS_AUTH_REQUIRED,
   DingTalkDocuments,
   dwsBinary,
   runDws,

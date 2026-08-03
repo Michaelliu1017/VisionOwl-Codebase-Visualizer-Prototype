@@ -16,14 +16,30 @@ export function CodeInspector({
   context,
   onClose,
   onChanged,
+  onAddDocument,
+  onAddAnnotation,
+  canEdit = true,
+  currentAuthor = "Local user",
 }: {
   projectId?: string;
   context?: EntityContext;
   onClose: () => void;
   onChanged: () => void;
+  onAddDocument?: (
+    entityId: string,
+    input: {
+      provider: "link" | "dingtalk" | "local";
+      title: string;
+      url: string;
+      summary?: string;
+    },
+  ) => Promise<unknown>;
+  onAddAnnotation?: (entityId: string, body: string) => Promise<unknown>;
+  canEdit?: boolean;
+  currentAuthor?: string;
 }) {
   const [annotation, setAnnotation] = useState("");
-  const [author, setAuthor] = useState("Local user");
+  const [author, setAuthor] = useState(currentAuthor);
   const [documentOpen, setDocumentOpen] = useState(false);
   const [documentTitle, setDocumentTitle] = useState("");
   const [documentUrl, setDocumentUrl] = useState("");
@@ -136,13 +152,15 @@ export function CodeInspector({
         <section className="vision-inspector-section">
           <div className="vision-section-title">
             <span>关联文档</span>
-            <button
-              type="button"
-              onClick={() => setDocumentOpen((current) => !current)}
-              aria-label="关联文档"
-            >
-              <Plus size={14} />
-            </button>
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => setDocumentOpen((current) => !current)}
+                aria-label="关联文档"
+              >
+                <Plus size={14} />
+              </button>
+            )}
           </div>
           <div className="vision-document-list">
             {context.documents.map((document) => (
@@ -164,14 +182,14 @@ export function CodeInspector({
               <p className="vision-inline-empty">暂无关联文档。</p>
             )}
           </div>
-          {documentOpen && (
+          {canEdit && documentOpen && (
             <form
               className="vision-compact-form"
               onSubmit={async (event) => {
                 event.preventDefault();
                 setSaving(true);
                 try {
-                  await visionApi.addDocument(projectId, entity.id, {
+                  await (onAddDocument || ((entityId, input) => visionApi.addDocument(projectId, entityId, input)))(entity.id, {
                     provider: documentUrl.includes("alidocs") ? "dingtalk" : "link",
                     title: documentTitle,
                     url: documentUrl,
@@ -229,39 +247,46 @@ export function CodeInspector({
               </article>
             ))}
           </div>
-          <form
-            className="vision-compact-form"
-            onSubmit={async (event) => {
-              event.preventDefault();
-              if (!annotation.trim()) return;
-              setSaving(true);
-              try {
-                await visionApi.addAnnotation(projectId, entity.id, {
-                  author,
-                  body: annotation,
-                });
-                setAnnotation("");
-                onChanged();
-              } finally {
-                setSaving(false);
-              }
-            }}
-          >
-            <input
-              value={author}
-              onChange={(event) => setAuthor(event.target.value)}
-              placeholder="署名"
-            />
-            <textarea
-              rows={3}
-              value={annotation}
-              onChange={(event) => setAnnotation(event.target.value)}
-              placeholder="添加批注"
-            />
-            <button type="submit" disabled={saving || !annotation.trim()}>
-              {saving ? "提交中" : "添加批注"}
-            </button>
-          </form>
+          {canEdit && (
+            <form
+              className="vision-compact-form"
+              onSubmit={async (event) => {
+                event.preventDefault();
+                if (!annotation.trim()) return;
+                setSaving(true);
+                try {
+                  if (onAddAnnotation) {
+                    await onAddAnnotation(entity.id, annotation);
+                  } else {
+                    await visionApi.addAnnotation(projectId, entity.id, {
+                      author,
+                      body: annotation,
+                    });
+                  }
+                  setAnnotation("");
+                  onChanged();
+                } finally {
+                  setSaving(false);
+                }
+              }}
+            >
+              <input
+                value={author}
+                onChange={(event) => setAuthor(event.target.value)}
+                placeholder="署名"
+                readOnly={Boolean(onAddAnnotation)}
+              />
+              <textarea
+                rows={3}
+                value={annotation}
+                onChange={(event) => setAnnotation(event.target.value)}
+                placeholder="添加批注"
+              />
+              <button type="submit" disabled={saving || !annotation.trim()}>
+                {saving ? "提交中" : "添加批注"}
+              </button>
+            </form>
+          )}
         </section>
       </div>
     </aside>
