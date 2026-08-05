@@ -1,0 +1,11 @@
+{
+  "name": "@visionowl/change-impact",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Finds graph nodes affected by a repository change set.",
+  "exports": "./src/index.js",
+  "scripts": {
+    "test": "node --test"
+  }
+}
