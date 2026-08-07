@@ -1,8 +1,39 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import process from "node:process";
 
 const root = new URL("../", import.meta.url).pathname;
+const bannerScript = new URL("./banner.py", import.meta.url).pathname;
+
+function printBanner() {
+  const candidates = [
+    process.env.PYTHON_BIN,
+    `${root}.venv/bin/python`,
+    "python3.13",
+    "python3.12",
+    "python3.11",
+    "python3.10",
+    "python3",
+  ].filter(Boolean);
+
+  for (const python of [...new Set(candidates)]) {
+    const result = spawnSync(python, [bannerScript], {
+      cwd: root,
+      encoding: "utf8",
+    });
+    if (result.status === 0) {
+      process.stdout.write(result.stdout);
+      return;
+    }
+  }
+
+  console.warn(
+    "VisionOwl banner unavailable. Install Python dependencies with: .venv/bin/python -m pip install -r requirements.txt",
+  );
+}
+
+printBanner();
+
 const localApiToken = randomBytes(32).toString("base64url");
 const processes = [
   spawn("npm", ["run", "dev", "--workspace", "@visionowl/api"], {

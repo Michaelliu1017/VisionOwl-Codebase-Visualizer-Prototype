@@ -140,6 +140,8 @@ VisionOwl looks for the Understand Anything skill in these locations:
 
 ```bash
 npm install
+python3.12 -m venv .venv
+.venv/bin/python -m pip install -r requirements.txt
 ```
 
 ### 2. Start the development environment
