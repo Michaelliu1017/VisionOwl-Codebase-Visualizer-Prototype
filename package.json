@@ -24,6 +24,9 @@
   "engines": {
     "node": ">=22.5"
   },
+  "dependencies": {
+    "@visionowl/pybanner-runtime": "0.1.0"
+  },
   "allowScripts": {
     "electron@38.8.6": true,
     "esbuild@0.28.1": true

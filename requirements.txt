@@ -1,1 +1,1 @@
-pybanner==1.0.3
+pybanner @ git+https://github.com/Michaelliu1017/PyBanner.git@f5aed05754e93c37f10bb3e32ccf397bb010e6c5

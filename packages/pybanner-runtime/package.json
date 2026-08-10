@@ -1,0 +1,8 @@
+{
+  "name": "@visionowl/pybanner-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Runtime adapter for the Michaelliu1017/PyBanner terminal banner repository.",
+  "exports": "./src/index.mjs"
+}
