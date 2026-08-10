@@ -1,0 +1,11 @@
+{
+  "name": "@visionowl/scan-performance",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Compares full and incremental repository scan durations.",
+  "exports": "./src/index.js",
+  "scripts": {
+    "test": "node --test"
+  }
+}
