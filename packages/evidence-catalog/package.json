@@ -1,0 +1,11 @@
+{
+  "name": "@visionowl/evidence-catalog",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Normalizes source evidence into stable, commit-bound records for graph nodes and knowledge assets.",
+  "exports": "./src/index.js",
+  "scripts": {
+    "test": "node --test"
+  }
+}
