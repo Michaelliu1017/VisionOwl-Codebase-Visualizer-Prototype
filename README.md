@@ -1,8 +1,8 @@
 # VisionOwl
 
-[English](#english) · [中文](#中文) · [Deployment Guide](./DEPLOYMENT.md)
+[Overview](#english) · [概览](#概览) · [Deployment Guide](./DEPLOYMENT.md)
 
-## English
+## Overview
 
 VisionOwl is a self-evolving engineering knowledge base for software teams. It connects GitHub repositories, code graphs, engineering documents, and AI agents in a continuous loop: the initial scan establishes a knowledge baseline, while later pushes trigger incremental analysis and stream updated graphs and documents to the desktop app.
 
@@ -58,7 +58,7 @@ Use `npm run dev:mock` for a UI-only demo. See [DEPLOYMENT.md](./DEPLOYMENT.md) 
 
 > Never commit environment files, private keys, tokens, DWS credentials, or generated source workspaces.
 
-## 中文
+## 概览
 
 VisionOwl 是面向团队的自进化工程知识库。它将 GitHub 仓库、代码图谱、工程文档和 AI Agent 连接为持续更新的闭环：首次分析建立知识基线，后续 Push 通过 Webhook 触发增量分析，并将新图谱与文档实时同步到桌面端。
 
