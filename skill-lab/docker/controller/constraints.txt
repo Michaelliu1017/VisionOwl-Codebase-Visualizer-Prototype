@@ -1,0 +1,4 @@
+deepeval==4.1.6
+openai==2.53.0
+pydantic==2.13.4
+

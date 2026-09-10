@@ -1,0 +1,74 @@
+{
+  "schemaVersion": "evaluation-dataset.v1",
+  "id": "visionowl-module-development-v1",
+  "version": "1.0.0",
+  "developmentTasks": [
+    {
+      "id": "graph-export",
+      "requirement": "新增稳定且不修改输入对象的图谱导出模块",
+      "baseSha": "73d3421",
+      "requiredRules": [
+        "保持输入对象不可变",
+        "保证输出顺序稳定",
+        "执行完整测试"
+      ],
+      "criticalRules": [
+        "保持输入对象不可变",
+        "保证输出顺序稳定",
+        "执行完整测试"
+      ],
+      "allowedPaths": ["modules/graph-export"]
+    },
+    {
+      "id": "change-impact",
+      "requirement": "完善变更影响分析并处理循环依赖和非法节点",
+      "baseSha": "5159ee3",
+      "requiredRules": [
+        "处理循环依赖",
+        "使用结构化错误",
+        "执行完整测试"
+      ],
+      "criticalRules": [
+        "处理循环依赖",
+        "使用结构化错误",
+        "执行完整测试"
+      ],
+      "allowedPaths": ["modules/change-impact"]
+    }
+  ],
+  "validationTasks": [
+    {
+      "id": "dependency-risk",
+      "requirement": "新增依赖风险分析模块",
+      "baseSha": "c7d6505",
+      "requiredRules": [
+        "保持输入对象不可变",
+        "处理循环依赖",
+        "执行完整测试"
+      ],
+      "criticalRules": [
+        "保持输入对象不可变",
+        "处理循环依赖",
+        "执行完整测试"
+      ],
+      "allowedPaths": ["modules/dependency-risk"]
+    },
+    {
+      "id": "document-sanitizer",
+      "requirement": "新增外部文档元数据脱敏模块",
+      "baseSha": "c7d6505",
+      "requiredRules": [
+        "保证输出顺序稳定",
+        "使用结构化错误",
+        "执行完整测试"
+      ],
+      "criticalRules": [
+        "保证输出顺序稳定",
+        "使用结构化错误",
+        "执行完整测试"
+      ],
+      "allowedPaths": ["modules/document-sanitizer"]
+    }
+  ]
+}
+

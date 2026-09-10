@@ -1,0 +1,101 @@
+{
+  "schemaVersion": "evaluation-dataset.v1",
+  "id": "visionowl-module-development-qoder-v1",
+  "version": "1.0.0",
+  "developmentTasks": [
+    {
+      "id": "dependency-inspector",
+      "requirement": "在 modules/dependency-inspector 新增一个无第三方依赖的 ESM 模块。它必须从 src/index.js 导出 inspectDependencies(graph)；graph 使用 nodes: [{id}] 和 edges: [{source,target}]；返回 {nodeIds: string[], cycles: string[][]}；非法边引用必须失败；补充模块自己的 package.json、README 和可见测试。遵循挂载 Skill 中的工程规则。",
+      "baseSha": "73d3421",
+      "requiredRules": [
+        "保持输入对象不可变，不得对 nodes、edges 或调用方数组原地排序",
+        "保证输出顺序稳定，节点和循环结果必须使用稳定的字典序",
+        "使用结构化错误，错误对象必须包含稳定的 code 和 details"
+      ],
+      "criticalRules": [
+        "保持输入对象不可变，不得对 nodes、edges 或调用方数组原地排序",
+        "保证输出顺序稳定，节点和循环结果必须使用稳定的字典序",
+        "使用结构化错误，错误对象必须包含稳定的 code 和 details"
+      ],
+      "allowedPaths": ["modules/dependency-inspector"],
+      "forbiddenPaths": ["tests", "accept", ".github"],
+      "metadata": {
+        "runner": {
+          "hiddenFiles": [
+            {"source": "dependency-inspector/immutable.mjs", "target": ".skill-lab-hidden/dependency-inspector/immutable.mjs"},
+            {"source": "dependency-inspector/stable.mjs", "target": ".skill-lab-hidden/dependency-inspector/stable.mjs"},
+            {"source": "dependency-inspector/error.mjs", "target": ".skill-lab-hidden/dependency-inspector/error.mjs"}
+          ],
+          "checks": [
+            {
+              "name": "hidden:input-immutable",
+              "command": ["node", ".skill-lab-hidden/dependency-inspector/immutable.mjs"],
+              "critical": true,
+              "rule": "保持输入对象不可变，不得对 nodes、edges 或调用方数组原地排序"
+            },
+            {
+              "name": "hidden:stable-output",
+              "command": ["node", ".skill-lab-hidden/dependency-inspector/stable.mjs"],
+              "critical": true,
+              "rule": "保证输出顺序稳定，节点和循环结果必须使用稳定的字典序"
+            },
+            {
+              "name": "hidden:structured-error",
+              "command": ["node", ".skill-lab-hidden/dependency-inspector/error.mjs"],
+              "critical": true,
+              "rule": "使用结构化错误，错误对象必须包含稳定的 code 和 details"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "validationTasks": [
+    {
+      "id": "impact-planner",
+      "requirement": "在 modules/impact-planner 新增一个无第三方依赖的 ESM 模块。它必须从 src/index.js 导出 planImpact(graph, changedNodeIds)；graph 使用 nodes: [{id}] 和 edges: [{source,target}]；返回 {directNodeIds: string[], affectedNodeIds: string[]}，其中 affectedNodeIds 包含沿有向边可达的节点；未知节点必须失败；补充 package.json、README 和可见测试。遵循挂载 Skill 中的工程规则。",
+      "baseSha": "c7d6505",
+      "requiredRules": [
+        "保持输入对象不可变，不得对 nodes、edges 或调用方数组原地排序",
+        "保证输出顺序稳定，节点和循环结果必须使用稳定的字典序",
+        "使用结构化错误，错误对象必须包含稳定的 code 和 details"
+      ],
+      "criticalRules": [
+        "保持输入对象不可变，不得对 nodes、edges 或调用方数组原地排序",
+        "保证输出顺序稳定，节点和循环结果必须使用稳定的字典序",
+        "使用结构化错误，错误对象必须包含稳定的 code 和 details"
+      ],
+      "allowedPaths": ["modules/impact-planner"],
+      "forbiddenPaths": ["tests", "accept", ".github"],
+      "metadata": {
+        "runner": {
+          "hiddenFiles": [
+            {"source": "impact-planner/immutable.mjs", "target": ".skill-lab-hidden/impact-planner/immutable.mjs"},
+            {"source": "impact-planner/stable.mjs", "target": ".skill-lab-hidden/impact-planner/stable.mjs"},
+            {"source": "impact-planner/error.mjs", "target": ".skill-lab-hidden/impact-planner/error.mjs"}
+          ],
+          "checks": [
+            {
+              "name": "hidden:input-immutable",
+              "command": ["node", ".skill-lab-hidden/impact-planner/immutable.mjs"],
+              "critical": true,
+              "rule": "保持输入对象不可变，不得对 nodes、edges 或调用方数组原地排序"
+            },
+            {
+              "name": "hidden:stable-output",
+              "command": ["node", ".skill-lab-hidden/impact-planner/stable.mjs"],
+              "critical": true,
+              "rule": "保证输出顺序稳定，节点和循环结果必须使用稳定的字典序"
+            },
+            {
+              "name": "hidden:structured-error",
+              "command": ["node", ".skill-lab-hidden/impact-planner/error.mjs"],
+              "critical": true,
+              "rule": "使用结构化错误，错误对象必须包含稳定的 code 和 details"
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

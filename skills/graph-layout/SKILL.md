@@ -1,119 +1,154 @@
 ---
 name: graph-layout
-description: Design and implement readable directed code, dependency, and architecture graphs with container grouping, ELK layered placement, edge aggregation, and interaction-only visual overlays. Use when graph edges cross or overlap, labels collide with nodes, large React Flow or similar diagrams become unreadable, or a topology view needs clear overview, focus, and path modes.
+description: 用 React Flow + ELK 渲染可读的代码/依赖/架构图，解决边交叉、标签碰撞、大图不可读。先按事实建图再优化呈现，绝不为美观改动真实关系；支持 overview/focus/path 三种模式、可折叠容器与带 relation ID 的聚合 trunk。Use when the user asks to visualize dependency or architecture graphs with React Flow/ELK, fix edge crossings, label collisions or hairball graphs, build overview/focus/path modes, collapsible containers, or aggregate cross-container edges.
 ---
 
 # Graph Layout
 
-Build the graph from facts first, then optimize its presentation. Never invent,
-reverse, or delete a factual relationship merely to make the diagram prettier.
+一张架构图有两层：**事实层**（节点与关系，来自代码分析，只读）和**呈现层**（聚合、折叠、布局，可变换）。可读性问题永远用呈现层手段解决；呈现层的每一步变换必须**无损可逆**——靠 relation ID 锚定回事实层。丑陋的真实优于好看的假象。
 
-## Workflow
+实现模式（ELK 配置、派生算法、组件与 store 代码）见 `references/react-flow-elk-pattern.md`。
 
-1. Normalize node IDs, directed edges, node dimensions, and explicit groups.
-2. Derive one visual container per architectural area. For path-derived groups,
-   remove the repository common prefix and choose the shallowest directory depth
-   that produces a small, balanced set of areas.
-3. Use separate topology detail levels. In overview, aggregate cross-container
-   relationships into labeled domain trunks. In focus and path modes, restore
-   the factual module endpoints.
-4. Run a two-stage layout:
-   - for a small acyclic domain graph, use ELK layered placement;
-   - for five or more large domains, wrap domains into a wide, crossing-aware
-     layered grid so the graph remains readable instead of becoming one
-     extremely long row;
-   - lay out visible members inside each expanded container.
-5. Keep exact intra-container edges in overview. Use aggregated cross-container
-   trunks to preserve architecture readability, then expose their original
-   relation IDs and exact endpoints on selection.
-6. Apply selection, hover, search, and animation as a visual overlay without
-   recomputing topology.
-7. Validate direction, crossings, labels, resize behavior, and large graphs.
+## 硬约束
 
-Read [references/react-flow-elk-pattern.md](references/react-flow-elk-pattern.md)
-before implementing or revising a React Flow graph.
+1. **事实图只读** — 不为布局删边、增边、改方向、合并节点。交叉多、有回边、不对称，都是呈现层问题。
+2. **聚合必须携带 ID** — 跨容器边聚合成 trunk 时携带全部 relation ID；任何时刻都能从呈现图精确还原事实边集合。
+3. **交互不动拓扑** — hover / 选中 / 高亮是纯视觉叠加层：只映射样式，不触发布局重算，不改呈现图结构，不改坐标。
+4. **布局状态与交互状态分离** — 两个 store，单向数据流。只有折叠集或分组变化才重新跑布局；交互期间布局计数器增量必须为 0。
+5. **Git 仓库边界保留** — 仓库是最外层容器；任何分组策略都不得把不同仓库的节点并入同一分组。
+6. **accent 纪律** — 强调色只出现在选中元素与激活路径上。hover 用中性提亮，装饰不用 accent。
+7. **交付前跑验证清单** — "事实保真"组全部通过才算完成。
 
-## Required Invariants
+## 数据分层（单向流）
 
-- Keep `source`, `target`, and relationship type unchanged.
-- Do not create a repository-folder root node unless it is a real modeled entity.
-- Prefer explicit architecture groups, then path-based groups, then a
-  relationship-density fallback.
-- Preserve real repository and independently deployable service boundaries.
-  Never merge modules from different detected Git repositories into one visual
-  container.
-- Never group architecture modules by a synthetic display path such as
-  `architecture/<generated-id>`; inspect their real member file paths.
-- When one path bucket owns more than roughly 70 percent of modules, descend one
-  directory level before accepting the grouping.
-- Treat containers as visual boundaries, not business entities.
-- In focus and path modes, never terminate an exact edge on an expanded visual
-  container. Overview-only aggregate trunks may terminate on containers when
-  they retain their source relation IDs.
-- Pass measured node and container dimensions to the layout engine.
-- Keep layout state separate from transient interaction state.
-- Keep reciprocal relations static in the overview; do not imply one-way flow
-  with a directional pulse.
+```
+fact graph ──grouping──> presentation graph ──ELK/grid──> positions ──render──> interaction overlay
+```
 
-## Display Policy
+| 层 | 内容 | 谁能改 | 变化触发 |
+|---|---|---|---|
+| fact graph | 节点、边、方向、relation ID | 只有上游分析工具 | 全量重建 |
+| grouping | 容器树（仓库 > 域 > 子目录） | 分组策略 | 重新派生 + 布局 |
+| presentation | 折叠集派生出的可见节点/边/trunk | 折叠/展开操作 | 重新布局 |
+| positions | ELK 或网格算出的坐标 | 布局引擎 | 仅渲染 |
+| overlay | hover/选中/激活路径的样式 | 交互 | 仅样式，零布局 |
 
-- **Overview:** show containers, their members, exact intra-container edges,
-  and one labeled aggregate trunk per cross-container direction. The trunk must
-  retain the underlying relation IDs and count.
-- **Focus:** show the selected module's exact incoming and outgoing edges.
-  Keep unrelated exact structure quiet.
-- **Path:** show exact path edges and directional animation. Keep non-path
-  relationships dimmed.
-- **Expanded container:** preserve both intra-container and cross-container
-  module endpoints.
-- **Collapsed container:** project hidden member endpoints to the container and
-  aggregate duplicates. Preserve the original relationship IDs so expansion
-  restores the exact graph.
+若上游是 repository-understanding 的证据台账，`from/to/type/#` 可直接映射为事实图的边（`#` 即 relation ID）。
 
-## Routing And Labels
+## 完整性不变式
 
-- Prefer layered layout for directed architecture graphs.
-- For the top-level architecture pass, preserve a stable processing direction
-  while also respecting the viewport aspect ratio. A long one-row graph that
-  forces labels below readable size is a failed layout.
-- For five or more large containers, use at most four columns, score candidate
-  placement by weighted edge length and crossings, and keep enough row spacing
-  for labeled routes.
-- Use relationship evidence to rank domains. Collapse reciprocal layout hints
-  to one deterministic direction so cycles do not destroy the layer order; this
-  affects placement only and must not alter the displayed facts.
-- Detect dense cyclic subgraphs. Use a balanced local grid inside their
-  container while retaining ELK for the container graph and sparse subgraphs;
-  forcing a dense cycle through layered ranks creates unreadable towers.
-- Use a compact grid when the layered result would exceed the readable aspect
-  ratio. Order and optimize that grid from relationship evidence; never use an
-  arbitrary alphabetical packing.
-- Enable crossing minimization and reserve enough rank and node spacing.
-- Prefer orthogonal or smooth orthogonal routes over arbitrary curves.
-- Attach edges to the closest valid side of the real endpoint.
-- Always show concise labels for overview aggregate trunks. Show exact labels
-  for selected and active-path edges.
-- Place labels after node layout and reject positions intersecting nodes or
-  existing labels.
+呈现图**永远完整**。每条事实边恰好处于三种状态之一：
 
-## Visual Hierarchy
+1. **精确边** — 两端容器链全展开，原样可见；
+2. **被恰好一条 trunk 携带** — 至少一端被折叠，按 `(可见源, 可见目标, 方向)` 聚合，`data.relationIds` 持有成员；
+3. **容器内部边** — 两端落在同一折叠容器内，计入该容器的 `interiorRelationIds`，容器头部显示"内部 n 条"。
 
-- A normal container boundary is a quiet structural line, not a selected state.
-- Reserve accent fill, strong glow, and high-contrast borders for selection or
-  an active path.
-- Render code modules as dark neutral glass.
-- Render databases, queues, log stores, and external systems with distinct
-  icons and a restrained secondary material.
-- Keep the primary flow stronger than static imports and supporting relations.
+三类的并集 == 事实边全集，无重复无遗漏。`assertLossless` 校验器（见 reference）检查这个三分划，交付前必须输出 0 diff。
 
-## Validation
+## 三种模式
 
-Check at least:
+模式不是三张不同的图，而是**（折叠集 + 叠加样式）的预设**——派生逻辑只认折叠集，模式切换不引入特殊路径：
 
-- no node or label overlap;
-- no edge text inside a node;
-- source-to-target direction is visually unambiguous;
-- selecting a node does not rearrange the graph;
-- bidirectional relationships do not animate as one-way traffic;
-- collapsed and expanded containers remain readable;
-- the graph still works at narrow and wide viewport sizes.
+| 模式 | 折叠集 | 叠加样式 | 跨容器边 |
+|---|---|---|---|
+| overview | 全部容器折叠到域级 | 无 | 聚合 trunk + 数量徽标 |
+| focus | 主体容器展开，其余折叠 | 非 1-hop 邻域淡出 | 主体侧精确端点，邻居侧落在容器边界 |
+| path | 路径途经的容器展开 | 路径高亮（accent），其余淡出 | 路径边端到端精确，逐段可点 |
+
+- 淡出用 overlay 实现，**不从呈现图删除**任何元素。
+- 任何模式下用户都可手动折叠/展开任意容器；展开按 relationIds 还原精确端点，折叠重新聚合。
+- **方向分开聚合**：A→B 与 B→A 是两条 trunk，永不合并成无向线。
+
+## 分组
+
+优先级从高到低，高优先级存在就不启用低的：
+
+1. **显式架构分组** — 架构文档声明的域、workspace 包结构、部署单元。必须注明出处（文件 + 行号）。
+2. **路径分组** — 顶层目录桶。
+3. **密度兜底** — 确定性聚类（按最强邻居合并，平手取字典序），UI 上标注"自动分组"，明示它不是架构事实。
+
+约束：
+
+- Git 仓库是最外层容器，分组只在仓库内部进行。
+- **下钻规则**：单个路径桶容纳 > 50% 节点时，用它的下一级子目录再分一层，最多下钻三层。
+- 分组只产生容器节点，**不改写任何边**——边的聚合是折叠集派生的结果，与分组本身无关。
+
+## 布局选择
+
+**默认：ELK layered**，`hierarchyHandling: INCLUDE_CHILDREN` 一次算完嵌套图；输入先排序并固定 model order，保证同输入同输出。
+
+**切换到感知交叉的网格**，当满足任一：
+
+- 域容器数 ≥ 5；
+- trunk 图中处于环内的边占比 > 30%（SCC 判定）——分层布局在稠密环上会产生大量长回边。
+
+网格规则：
+
+- **≤ 4 列**，行数按需增长；
+- 两级布局：外层网格只摆容器，内层每个容器单独跑 ELK layered，容器尺寸由内层结果 + padding 决定；
+- **打分函数** `score = Σ(trunk 权重 × 端点曼哈顿距离) + λ × 交叉数`，λ 取平均加权边长，使两项同量级；
+- 域数 ≤ 8 全排列穷举，> 8 从加权度排序初始解开始贪心成对交换；
+- 同时算出 ELK 与网格两种方案的得分，**报告数值再择优**，不凭感觉选。
+
+## 交互
+
+- 叠加层实现：interaction store 只存 `hoveredId / selectedIds / activePathIds`，组件订阅后映射为 className / CSS 变量。nodes/edges 数组引用与坐标不变。
+- 开发期在 layout store 暴露 `layoutRuns` 计数器，交互测试断言其增量为 0。
+- **往返关系保持静态**：A→B 与 B→A 成对边用固定垂直偏移（按 id 字典序定正负）平行渲染；交互只变色，不换位、不合并、不动画摆动。
+
+## 视觉系统
+
+- **代码模块：深色玻璃** — 半透明深底 + backdrop-blur + 细边框（token 见 reference）。
+- **基础设施：独立图标 + 区别轮廓** — 按 kind（postgres / redis / kafka / …）配图标，轮廓与模块卡片明显不同；去色后仍可分辨。绝不把基础设施塞进代码域容器凑平衡。
+- **容器** — 淡填充 + 顶部标题条；ELK padding 预留标题高度，子节点不与标题重叠。
+- **边** — 默认中性低对比；trunk 粗细 = `1 + log2(1 + 聚合数)`；箭头小而清晰。
+- **accent** — 单一强调色，只用于选中与激活路径。
+- **标签防碰撞**：
+  - overview 只显示容器名 + trunk 数量徽标，不显示逐边类型标签；
+  - focus 只给主体相邻的边显示类型标签；
+  - 节点名超宽中段省略，全名进 tooltip；标签不旋转；
+  - 徽标位置冲突时沿路径参数错位（t = 0.5 → 0.35 / 0.65，按边 id 哈希确定性选择）。
+
+## 验证清单
+
+**事实保真（一票否决）**
+- [ ] 全部展开后，可见边 id 集合 == 事实边 id 集合（无增、无减、无改向）
+- [ ] 每条 trunk 的 `relationIds.length` == 对应有向容器对的事实边数
+- [ ] 三分划校验：精确边 ∪ trunk 携带 ∪ 容器内部 == 事实边全集，无重复
+- [ ] 折叠 → 展开往返一次，relation ID 集合不变
+- [ ] `assertLossless` 输出 0 diff
+
+**可读性**
+- [ ] 默认缩放下节点无重叠、标签无互压
+- [ ] ELK 与网格两种方案的得分已记录，选择有据
+- [ ] trunk 粗细随聚合数单调
+- [ ] 单桶占比超阈值的分组已下钻
+
+**状态与交互**
+- [ ] hover / 选中 / 取消期间 `layoutRuns` 增量为 0
+- [ ] 同输入两次渲染坐标一致（确定性）
+- [ ] 往返成对边平行渲染，交互中位置不变
+- [ ] 模式切换 overview → focus → overview，坐标可复现
+
+**视觉**
+- [ ] 全图 accent 元素数 == 当前选中/激活元素数（审计脚本或人工）
+- [ ] 去色截图中基础设施与代码模块仍可区分
+- [ ] 容器标题不被子节点遮挡
+
+**性能**
+- [ ] 500 节点 overview：worker 内布局 < 1.5s，hover 不掉帧
+- [ ] `onlyRenderVisibleElements` 开启；`nodeTypes` / `edgeTypes` 引用稳定（定义在组件外或 useMemo）
+
+## 常见走样，逐条避免
+
+| 走样 | 为什么错 | 正确做法 |
+|---|---|---|
+| 删掉一条难看的回边 | 篡改事实 | 换布局或聚合，边必须保留 |
+| 双向边合并成一条无向线 | 丢失方向语义 | 两条平行边，固定偏移 |
+| 为减交叉翻转个别边方向 | 改事实 | 交叉用网格打分/排序解决 |
+| hover 时重排"让相关节点靠近" | 拓扑抖动，破坏空间记忆 | 叠加层高亮，坐标不动 |
+| 把基础设施塞进代码域容器凑对称 | 伪造架构归属 | 基础设施独立分区 |
+| 孤立节点直接隐藏 | 图不完整，误导"全都连上了" | 单独"未连接"分区收纳 |
+| accent 用来装饰边框/图标 | 稀释选中语义 | accent 只给选中/激活 |
+| 跨仓库节点并入同一域分组 | 抹掉仓库边界 | 仓库为最外层容器 |
+| 聚合 trunk 不带 relation ID | 不可逆，无法审计 | trunk 必须携带成员 ID |

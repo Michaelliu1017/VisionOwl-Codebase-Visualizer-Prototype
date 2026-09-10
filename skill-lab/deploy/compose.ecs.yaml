@@ -1,0 +1,36 @@
+services:
+  skill-lab-runner-image:
+    profiles: ["build-only"]
+    build:
+      context: ..
+      dockerfile: docker/runner/Dockerfile
+    image: visionowl-skill-lab-runner:0.1.0
+
+  skill-lab-worker:
+    build:
+      context: ..
+      dockerfile: docker/controller/Dockerfile
+      args:
+        CONTROLLER_BASE_IMAGE: visionowl-skill-lab-runner:0.1.0
+    image: visionowl-skill-lab-controller:0.1.0
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      CORE_BASE_URL: http://cloud:17800
+      REDIS_URL: redis://redis:6379
+      SKILLLAB_STATE_ROOT: /data/visionowl-skill-lab
+    volumes:
+      - skill-lab-data:/data/visionowl-skill-lab
+    networks:
+      - visionowl-private
+    security_opt:
+      - no-new-privileges:true
+
+volumes:
+  skill-lab-data:
+
+networks:
+  visionowl-private:
+    external: true
+    name: infra_visionowl-private

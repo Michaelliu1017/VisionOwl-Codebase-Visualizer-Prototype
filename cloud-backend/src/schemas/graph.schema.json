@@ -1,0 +1,128 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://visionowl.dev/schemas/graph-1.0.json",
+  "title": "VisionOwl graph.json",
+  "description": "图谱数据规范 spec.md §8。Runner 与 Graph Service 双侧校验。",
+  "type": "object",
+  "required": ["schemaVersion", "projectId", "commitSha", "generatedAt", "nodes", "edges"],
+  "additionalProperties": true,
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "1.0" },
+    "projectId": { "type": "string", "minLength": 1 },
+    "commitSha": { "type": "string", "pattern": "^[0-9a-fA-F]{7,40}$" },
+    "generatedAt": { "type": "string", "minLength": 10 },
+    "nodes": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/node" }
+    },
+    "edges": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/edge" }
+    },
+    "views": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/view" }
+    },
+    "stats": {
+      "type": "object",
+      "properties": {
+        "nodeCount": { "type": "integer", "minimum": 0 },
+        "edgeCount": { "type": "integer", "minimum": 0 },
+        "inferredCount": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": true
+    }
+  },
+  "definitions": {
+    "evidence": {
+      "type": "object",
+      "required": ["file"],
+      "additionalProperties": true,
+      "properties": {
+        "file": { "type": "string", "minLength": 1 },
+        "startLine": { "type": "integer", "minimum": 0 },
+        "endLine": { "type": "integer", "minimum": 0 },
+        "symbol": { "type": "string" }
+      }
+    },
+    "node": {
+      "type": "object",
+      "required": ["id", "name", "kind"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "domain",
+            "module",
+            "submodule",
+            "class",
+            "function",
+            "interface",
+            "config",
+            "infra.redis",
+            "infra.mq",
+            "infra.db",
+            "external"
+          ]
+        },
+        "path": { "type": ["string", "null"] },
+        "range": {
+          "type": ["object", "null"],
+          "required": ["startLine", "endLine"],
+          "properties": {
+            "startLine": { "type": "integer", "minimum": 0 },
+            "endLine": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "domain": { "type": ["string", "null"] },
+        "parentId": { "type": ["string", "null"] },
+        "summary": { "type": "string" },
+        "evidence": { "type": "array", "items": { "$ref": "#/definitions/evidence" } },
+        "inferred": { "type": "boolean" },
+        "docRefs": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "required": ["id", "source", "target", "type"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "source": { "type": "string", "minLength": 1 },
+        "target": { "type": "string", "minLength": 1 },
+        "type": {
+          "type": "string",
+          "enum": ["call", "dependency", "read", "write", "publish", "consume", "implement", "contains"]
+        },
+        "inferred": { "type": "boolean" },
+        "evidence": { "type": "array", "items": { "$ref": "#/definitions/evidence" } }
+      }
+    },
+    "view": {
+      "type": "object",
+      "required": ["id", "name", "nodeIds", "edgeIds"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "nodeIds": { "type": "array", "items": { "type": "string" } },
+        "edgeIds": { "type": "array", "items": { "type": "string" } },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["order", "edgeId"],
+            "properties": {
+              "order": { "type": "integer", "minimum": 1 },
+              "edgeId": { "type": "string" },
+              "label": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  }
+}

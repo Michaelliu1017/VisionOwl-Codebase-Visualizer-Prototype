@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://visionowl.dev/contracts/knowledge.evidence.sync.event.schema.json",
+  "title": "Knowledge Evidence Sync Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["eventId", "eventType", "occurredAt", "projectId", "sourceId", "repositoryId", "syncRunId"],
+  "properties": {
+    "eventId": { "type": "string", "minLength": 1 },
+    "eventType": {
+      "enum": ["knowledge.evidence.sync.completed", "knowledge.evidence.sync.failed"]
+    },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "projectId": { "type": "string", "minLength": 1 },
+    "sourceId": { "type": "string", "minLength": 1 },
+    "repositoryId": { "type": "string", "minLength": 1 },
+    "syncRunId": { "type": "string", "minLength": 1 },
+    "snapshotPath": { "type": "string" },
+    "error": { "type": "string" }
+  }
+}

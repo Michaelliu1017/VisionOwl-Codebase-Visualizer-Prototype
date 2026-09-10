@@ -1,0 +1,4 @@
+interface:
+  display_name: "VisionOwl Module Analysis"
+  short_description: "Analyze one module packet and propose grounded graph patches"
+  default_prompt: "Analyze the supplied VisionOwl Analysis Packet and write only evidence-backed module results and graph patches."

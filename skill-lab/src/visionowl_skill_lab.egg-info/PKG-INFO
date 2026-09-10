@@ -1,0 +1,16 @@
+Metadata-Version: 2.4
+Name: visionowl-skill-lab
+Version: 0.1.0
+Summary: Deterministic evaluation and optimization control plane for VisionOwl skills
+Requires-Python: >=3.10
+Requires-Dist: httpx<1,>=0.27
+Requires-Dist: redis<7,>=5
+Provides-Extra: api
+Requires-Dist: fastapi; extra == "api"
+Requires-Dist: uvicorn; extra == "api"
+Provides-Extra: development
+Requires-Dist: pytest; extra == "development"
+Provides-Extra: evaluation
+Requires-Dist: deepeval<5,>=4; extra == "evaluation"
+Requires-Dist: openai<3,>=1; extra == "evaluation"
+Requires-Dist: skillopt @ git+https://github.com/microsoft/SkillOpt.git@47fe269d75d3def79ffd90236261d26d84868ae5 ; extra == "evaluation"

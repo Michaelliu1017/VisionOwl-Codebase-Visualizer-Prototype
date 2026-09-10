@@ -1,0 +1,116 @@
+# VisionOwl Cloud —— contract-v1.0 正式栈
+# 部署位置:ECS /opt/vo/infra/compose.yaml,compose 项目名固定 infra(复用既有数据卷)
+# 镜像红线:registry-1.docker.io 与 ACR library/ 命名空间在本机均不可用,
+#           所需镜像已在宿主机打好本地短名标签,此处一律用短名并禁止隐式拉取。
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      # ⚠ 沿用旧栈已存在的卷 infra_visionowl-postgres,不得改名或重建
+      - visionowl-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 4s
+      retries: 20
+    networks: [visionowl-private]
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--appendfsync", "everysec"]
+    volumes:
+      - visionowl-redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks: [visionowl-private]
+    # 不暴露端口,仅栈内可达
+
+  migrate:
+    image: visionowl-cloud:latest
+    restart: "no"
+    command: ["node", "dist/migrate.js"]
+    env_file: [./.env]
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      postgres: { condition: service_healthy }
+    networks: [visionowl-private]
+
+  cloud:
+    build:
+      context: ../cloud-backend
+      dockerfile: docker/Dockerfile
+      args:
+        # ACR library/ 命名空间实测不可用(insufficient_scope);
+        # node:22-slim 已在宿主机由 docker.m.daocloud.io 拉取并打本地短名
+        NODE_IMAGE: node:22-slim
+    image: visionowl-cloud:latest
+    restart: unless-stopped
+    env_file: [./.env]
+    environment:
+      PORT: "17800"
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: redis://redis:6379
+      ARTIFACTS_DIR: /data/artifacts
+    volumes:
+      - /data/artifacts:/data/artifacts
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    expose: ["17800"]
+    networks: [visionowl-private]
+
+  worker:
+    image: visionowl-cloud:latest
+    restart: unless-stopped
+    command: ["node", "dist/worker/index.js"]
+    env_file: [./.env]
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      REDIS_URL: redis://redis:6379
+      ARTIFACTS_DIR: /data/artifacts
+      WORKSPACE_DIR: /data/workspace
+    volumes:
+      - /data/artifacts:/data/artifacts
+      - /data/workspace:/data/workspace
+      # runner 模式：worker 需要在宿主机 docker 上拉起一次性分析容器
+      #  - sock：控制宿主机 docker daemon
+      #  - docker CLI：go 静态二进制，直接挂进 slim 镜像可用
+      #  - workspace 宿主机/容器同路径，runner 的 -v 才能对上
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /usr/bin/docker:/usr/bin/docker:ro
+    depends_on:
+      cloud: { condition: service_started }
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [visionowl-private]
+
+  gateway:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on: [cloud]
+    ports:
+      # 桌面端需从外网访问;登录接口已内置 5 次/分/IP 限速
+      - "${VISIONOWL_GATEWAY_BIND:-0.0.0.0:8080}:80"
+    volumes:
+      - ./nginx/visionowl-cloud.conf:/etc/nginx/conf.d/default.conf:ro
+    networks: [visionowl-private]
+
+volumes:
+  visionowl-postgres:
+  visionowl-redis:
+
+networks:
+  visionowl-private:
+    driver: bridge

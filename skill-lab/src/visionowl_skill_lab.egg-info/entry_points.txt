@@ -1,0 +1,3 @@
+[console_scripts]
+visionowl-skill-lab = skill_lab.cli:main
+visionowl-skill-lab-worker = skill_lab.worker:main

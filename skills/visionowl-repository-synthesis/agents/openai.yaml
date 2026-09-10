@@ -1,0 +1,4 @@
+interface:
+  display_name: "VisionOwl Repository Synthesis"
+  short_description: "Assemble validated module results into repository flows"
+  default_prompt: "Synthesize the validated module reports into repository architecture without rereading all source."

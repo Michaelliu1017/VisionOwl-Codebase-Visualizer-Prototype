@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>visionOwl · 前端布局方案</title>
+<link rel="stylesheet" href="../../../skills/dark-glass-graph-ui/assets/dark-glass-graph-theme.css">
+<link rel="stylesheet" href="mockup.css">
+<style>
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 34px 24px 60px; }
+  h1 { font-size: 20px; margin: 0 0 6px; }
+  .sub { color: var(--dgg-muted); font-size: 12.5px; line-height: 1.7; margin-bottom: 26px; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .card {
+    border: 1px solid var(--dgg-line); border-radius: 8px;
+    background: var(--dgg-surface); padding: 15px 16px 16px;
+    text-decoration: none; color: inherit; display: block;
+    transition: border-color 160ms, background 160ms, transform 160ms;
+  }
+  .card:hover {
+    border-color: rgb(var(--dgg-accent-rgb) / 46%);
+    background: var(--dgg-object); transform: translateY(-1px);
+  }
+  .card h2 { font-size: 14px; margin: 0 0 3px; }
+  .card .key { color: var(--dgg-accent); font-size: 10.5px;
+    font-family: ui-monospace, monospace; letter-spacing: .04em; }
+  .card p { color: var(--dgg-muted); font-size: 11.5px; line-height: 1.65; margin: 8px 0 0; }
+  .card .tag { margin-top: 10px; display: flex; gap: 5px; flex-wrap: wrap; }
+  .wire { margin: 11px 0 0; display: grid; gap: 3px; height: 64px;
+    border: 1px solid var(--dgg-line); border-radius: 5px; padding: 4px; background: var(--dgg-bg); }
+  .b { border-radius: 2px; background: var(--dgg-object); }
+  .b.acc { background: linear-gradient(rgb(var(--dgg-accent-rgb)/26%),
+      rgb(var(--dgg-accent-rgb)/26%)), var(--dgg-object); }
+  .b.gl { background: rgb(105 113 105 / 42%); }
+  .note { margin-top: 28px; padding: 14px 16px; border: 1px solid var(--dgg-line);
+    border-left: 2px solid var(--dgg-accent); border-radius: 6px;
+    background: var(--dgg-surface); color: var(--dgg-muted);
+    font-size: 11.5px; line-height: 1.75; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>visionOwl · 桌面端前端布局方案</h1>
+  <div class="sub">
+    四个方案均严格遵循 <code>skills/dark-glass-graph-ui</code> 的视觉与交互契约，
+    直接复用其 <code>dark-glass-graph-theme.css</code> token；
+    图谱数据取自本仓库 <code>test/</code> fixture 的真实模块结构（14 节点 / 26 边）。<br>
+    四个方案的差异在<strong style="color:var(--dgg-text)">面板架构</strong>，不是配色换皮。
+    点击任一节点可验证「选中 → 邻接高亮 → 无关变暗」全链路。
+  </div>
+
+  <div class="grid">
+    <a class="card" href="layout-a.html">
+      <div class="key">方案 A</div>
+      <h2>IDE 三栏 + 底部 Agent 坞</h2>
+      <div class="wire" style="grid-template-rows:6px 1fr 18px">
+        <div class="b"></div>
+        <div style="display:grid;grid-template-columns:22% 1fr 28%;gap:3px">
+          <div class="b"></div><div class="b acc"></div><div class="b"></div>
+        </div>
+        <div class="b"></div>
+      </div>
+      <p>模块树、图谱、详情三栏并置，Agent 收在底部通栏坞。信息全可见、零遮挡，
+        但画布被三面挤压。</p>
+      <div class="tag"><span class="vo-chip">最稳妥</span><span class="vo-chip">画布最小</span></div>
+    </a>
+
+    <a class="card" href="layout-b.html">
+      <div class="key">方案 B</div>
+      <h2>图谱优先 + 玻璃浮层</h2>
+      <div class="wire" style="grid-template-rows:6px 1fr">
+        <div class="b"></div>
+        <div style="position:relative" class="b acc">
+          <div class="b gl" style="position:absolute;right:4px;top:4px;width:30%;height:44%"></div>
+          <div class="b gl" style="position:absolute;right:4px;bottom:4px;width:36%;height:34%"></div>
+        </div>
+      </div>
+      <p>满幅画布，工具条/详情/Agent 全部为磨砂玻璃浮层。画布最大、最能体现这套
+        玻璃美学，但浮层会遮挡图谱，需要重叠降级方案。</p>
+      <div class="tag"><span class="vo-chip">画布最大</span><span class="vo-chip">有遮挡</span></div>
+    </a>
+
+    <a class="card" href="layout-c.html">
+      <div class="key">方案 C</div>
+      <h2>窄栏 + 右列堆叠</h2>
+      <div class="wire" style="grid-template-rows:6px 1fr">
+        <div class="b"></div>
+        <div style="display:grid;grid-template-columns:8% 1fr 30%;gap:3px">
+          <div class="b"></div><div class="b acc"></div>
+          <div style="display:grid;grid-template-rows:1.1fr 1fr;gap:3px">
+            <div class="b"></div><div class="b"></div>
+          </div>
+        </div>
+      </div>
+      <p>左侧只留 52px 图标栏，右列上下拆成详情 + Agent。详情与 Agent 同时常驻
+        且互不遮挡，画布比 A 更宽。宽屏下最平衡。</p>
+      <div class="tag"><span class="vo-chip">推荐</span><span class="vo-chip">右列偏挤</span></div>
+    </a>
+
+    <a class="card" href="layout-d.html">
+      <div class="key">方案 D</div>
+      <h2>Agent 主导工作台</h2>
+      <div class="wire" style="grid-template-rows:6px 1fr">
+        <div class="b"></div>
+        <div style="display:grid;grid-template-columns:34% 1fr;gap:3px">
+          <div class="b"></div>
+          <div style="position:relative" class="b acc">
+            <div class="b gl" style="position:absolute;right:0;top:0;bottom:0;width:32%"></div>
+          </div>
+        </div>
+      </div>
+      <p>Agent 对话升为左侧主面板，详情改为选中时右侧推入层。突出「让 agent 分析
+        模块」这一核心价值，代价是图谱不再是绝对主角。</p>
+      <div class="tag"><span class="vo-chip">Agent 优先</span><span class="vo-chip">图谱弱化</span></div>
+    </a>
+  </div>
+
+  <div class="note">
+    <strong style="color:var(--dgg-text)">已实现的 skill 契约</strong>：单一权威状态、
+    邻接高亮为选中态投影（边不自持高亮）、单击选中/切换/取消、点击空白与 Esc 清空、
+    相关节点保持正常亮度而仅无关节点降亮、边界锚点连线（非中心到中心）、
+    每条边双路径（宽透明命中路径 + 可见路径）、边层位于节点之下、
+    节点背景完全不透明防止边线穿透、<code>prefers-reduced-motion</code> 降级。
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,29 @@
+services:
+  knowledge-generator:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-node:22-slim}
+    image: visionowl-knowledge-generator:latest
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      DATA_DIR: /app/data
+      REDIS_URL: redis://redis:6379
+      CORE_BASE_URL: http://cloud:17800
+      KNOWLEDGE_WORKER_ENABLED: "true"
+    command: ["node", "dist/src/worker.js"]
+    volumes:
+      - knowledge-data:/app/data
+    networks:
+      - visionowl-private
+
+volumes:
+  knowledge-data:
+
+networks:
+  visionowl-private:
+    external: true
+    name: infra_visionowl-private

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "skill-candidate.v1",
+  "projectId": "visionowl-prototype",
+  "candidateSkillId": "visionowl-module-development-real",
+  "candidateVersion": "0.1.0",
+  "sourceRepository": "Michaelliu1017/VisionOwl-Codebase-Visualizer-Prototype",
+  "sourceCommitSha": "73d3421",
+  "datasetId": "visionowl-module-development-qoder-v1",
+  "targetProfile": {
+    "language": "javascript",
+    "taskType": "module-development",
+    "executionProvider": "qoder"
+  }
+}

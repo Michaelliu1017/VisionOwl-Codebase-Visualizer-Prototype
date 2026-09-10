@@ -1,0 +1,4 @@
+interface:
+  display_name: "VisionOwl Quality Review"
+  short_description: "Explain quality gate failures and minimal retry scopes"
+  default_prompt: "Review the deterministic quality report without modifying graph artifacts."

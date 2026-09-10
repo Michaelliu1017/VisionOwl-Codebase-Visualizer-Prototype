@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://visionowl.dev/schemas/evidence.v1.schema.json",
+  "title": "VisionOwl Evidence Graph v1",
+  "type": "object",
+  "required": ["schemaVersion", "repository", "generatedAt", "nodes", "edges", "pendingLinks", "stats"],
+  "properties": {
+    "schemaVersion": { "const": "evidence.v1" },
+    "repository": {
+      "type": "object",
+      "required": ["sourceId", "repositoryId", "repoUrl", "owner", "repo", "branch"],
+      "properties": {
+        "sourceId": { "type": "string", "minLength": 1 },
+        "repositoryId": { "type": "string", "pattern": "^github:" },
+        "repoUrl": { "type": "string", "format": "uri" },
+        "owner": { "type": "string", "minLength": 1 },
+        "repo": { "type": "string", "minLength": 1 },
+        "branch": { "type": "string", "minLength": 1 },
+        "commitSha": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "generatedAt": { "type": "string", "format": "date-time" },
+    "nodes": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/evidenceNode" }
+    },
+    "edges": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/evidenceEdge" }
+    },
+    "pendingLinks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/pendingLink" }
+    },
+    "stats": {
+      "type": "object",
+      "required": ["nodesByKind", "edgesByType"],
+      "properties": {
+        "nodesByKind": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } },
+        "edgesByType": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 0 } }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "actorRef": {
+      "type": "object",
+      "required": ["id", "login"],
+      "properties": {
+        "id": { "type": "string" },
+        "login": { "type": "string" },
+        "displayName": { "type": "string" },
+        "avatarUrl": { "type": "string", "format": "uri" }
+      },
+      "additionalProperties": false
+    },
+    "evidenceNode": {
+      "type": "object",
+      "required": [
+        "id",
+        "schemaVersion",
+        "provider",
+        "repositoryId",
+        "kind",
+        "externalId",
+        "occurredAt",
+        "sourceUrl",
+        "rawRef",
+        "checksum",
+        "payload"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "schemaVersion": { "const": "evidence.v1" },
+        "provider": { "const": "github" },
+        "repositoryId": { "type": "string", "pattern": "^github:" },
+        "kind": {
+          "enum": [
+            "repository",
+            "actor",
+            "commit",
+            "change_request",
+            "review",
+            "comment",
+            "file",
+            "file_change",
+            "ci_run",
+            "ci_job"
+          ]
+        },
+        "externalId": { "type": "string" },
+        "state": { "type": "string" },
+        "actor": { "$ref": "#/$defs/actorRef" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "commitSha": { "type": "string" },
+        "occurredAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "sourceUrl": { "type": "string", "format": "uri" },
+        "rawRef": { "type": "string", "minLength": 1 },
+        "checksum": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "payload": { "type": "object" }
+      },
+      "additionalProperties": false
+    },
+    "evidenceEdge": {
+      "type": "object",
+      "required": ["id", "schemaVersion", "repositoryId", "fromId", "toId", "relationType", "basis", "createdAt"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^edge:" },
+        "schemaVersion": { "const": "evidence.v1" },
+        "repositoryId": { "type": "string" },
+        "fromId": { "type": "string" },
+        "toId": { "type": "string" },
+        "relationType": { "type": "string" },
+        "basis": { "type": "string", "minLength": 1 },
+        "rawRef": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    },
+    "pendingLink": {
+      "type": "object",
+      "required": ["id", "repositoryId", "fromId", "expectedToId", "relationType", "basis", "createdAt"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^pending:" },
+        "repositoryId": { "type": "string" },
+        "fromId": { "type": "string" },
+        "expectedToId": { "type": "string" },
+        "relationType": { "type": "string" },
+        "basis": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "additionalProperties": false
+    }
+  }
+}

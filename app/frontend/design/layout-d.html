@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>visionOwl · 方案 D · Agent 主导工作台</title>
+<link rel="stylesheet" href="../../../skills/dark-glass-graph-ui/assets/dark-glass-graph-theme.css">
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body>
+<div id="plan"></div>
+
+<div class="dgg-shell" style="height:calc(100vh - 29px)">
+  <div id="hdr"></div>
+
+  <div class="dgg-workspace vo-ws--d">
+    <aside class="dgg-sidebar" style="display:flex;flex-direction:column"
+           id="agent"></aside>
+    <div class="dgg-main" id="main"></div>
+  </div>
+</div>
+
+<script src="graph.js"></script>
+<script src="shell.js"></script>
+<script>
+  document.getElementById('plan').innerHTML = planBar('d');
+  document.getElementById('hdr').outerHTML = headerHTML();
+  document.getElementById('agent').innerHTML = agentHTML();
+
+  // 详情作为右侧推入层，仅在有选中时出现，不常占画布宽度
+  const slideover = `
+    <div class="vo-slideover" data-slideover style="display:none">
+      ${detailPanelHTML('模块详情')}
+    </div>`;
+
+  document.getElementById('main').innerHTML = canvasHTML(slideover);
+
+  // 选中态驱动推入层的显隐
+  onSelectionChange = function (id) {
+    const el = document.querySelector('[data-slideover]');
+    if (el) el.style.display = id ? 'flex' : 'none';
+  };
+
+  boot();
+</script>
+</body>
+</html>

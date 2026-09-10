@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>visionOwl · 方案 A · IDE 三栏 + 底部 Agent 坞</title>
+<link rel="stylesheet" href="../../../skills/dark-glass-graph-ui/assets/dark-glass-graph-theme.css">
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body>
+<div id="plan"></div>
+
+<div class="dgg-shell" style="height:calc(100vh - 29px)">
+  <div id="hdr"></div>
+
+  <div class="dgg-workspace vo-ws--a">
+    <aside class="dgg-sidebar">
+      <div class="vo-panel-title"><span>项目结构</span>
+        <span style="color:var(--dgg-faint);font-size:10px">14</span></div>
+      <div class="vo-tree" data-tree></div>
+    </aside>
+
+    <div class="dgg-main" id="main"></div>
+
+    <aside class="dgg-inspector" style="display:flex;flex-direction:column"
+           id="insp"></aside>
+  </div>
+
+  <div class="vo-dock" id="dock"></div>
+</div>
+
+<script src="graph.js"></script>
+<script src="shell.js"></script>
+<script>
+  document.getElementById('plan').innerHTML = planBar('a');
+  document.getElementById('hdr').outerHTML = headerHTML();
+  document.getElementById('main').innerHTML = canvasHTML();
+  document.getElementById('insp').innerHTML = detailPanelHTML('模块详情');
+  document.getElementById('dock').innerHTML = agentHTML();
+  boot();
+</script>
+</body>
+</html>

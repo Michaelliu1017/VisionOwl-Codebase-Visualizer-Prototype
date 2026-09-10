@@ -1,0 +1,67 @@
+openapi: 3.1.0
+info:
+  title: VisionOwl Knowledge Generator API
+  version: 0.1.0
+paths:
+  /healthz:
+    get:
+      summary: Process health
+      responses:
+        "200":
+          description: Healthy
+  /readyz:
+    get:
+      summary: Dependency readiness
+      responses:
+        "200":
+          description: Ready
+        "503":
+          description: Not ready
+  /v1/sources:
+    post:
+      summary: Register a public GitHub repository
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [projectId, repoUrl]
+              properties:
+                projectId: { type: string }
+                repoUrl: { type: string, format: uri }
+                branch: { type: string }
+                historySince: { type: string, format: date-time }
+      responses:
+        "201": { description: Source registered }
+  /v1/sources/{sourceId}/sync:
+    post:
+      summary: Start initial or incremental synchronization
+      parameters:
+        - in: path
+          name: sourceId
+          required: true
+          schema: { type: string }
+      responses:
+        "202": { description: Sync queued }
+  /v1/sync-runs/{runId}:
+    get:
+      summary: Get synchronization progress
+      parameters:
+        - in: path
+          name: runId
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Sync run }
+        "404": { description: Not found }
+  /v1/repositories/{repositoryId}/evidence-graph:
+    get:
+      summary: Get the current Evidence Graph snapshot
+      parameters:
+        - in: path
+          name: repositoryId
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Evidence Graph v1 }

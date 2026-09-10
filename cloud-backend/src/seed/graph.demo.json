@@ -1,0 +1,879 @@
+{
+  "schemaVersion": "1.0",
+  "projectId": "demo",
+  "commitSha": "171b8f0",
+  "generatedAt": "2026-08-04T04:00:00.000Z",
+  "nodes": [
+    {
+      "id": "module:apps/web",
+      "name": "web",
+      "kind": "module",
+      "path": "test/apps/web",
+      "domain": "apps",
+      "summary": "React 前端，消费 API 渲染预订与目录页面",
+      "evidence": [
+        {
+          "file": "test/apps/web/src/api/client.ts",
+          "startLine": 8,
+          "endLine": 34,
+          "symbol": "apiClient"
+        }
+      ],
+      "inferred": false
+    },
+    {
+      "id": "module:apps/api",
+      "name": "api",
+      "kind": "module",
+      "path": "test/apps/api",
+      "domain": "apps",
+      "summary": "HTTP 入口，装配路由、中间件与依赖上下文",
+      "evidence": [
+        {
+          "file": "test/apps/api/src/app.ts",
+          "startLine": 12,
+          "endLine": 48,
+          "symbol": "createApp"
+        }
+      ],
+      "inferred": false
+    },
+    {
+      "id": "module:apps/worker",
+      "name": "worker",
+      "kind": "module",
+      "path": "test/apps/worker",
+      "domain": "apps",
+      "summary": "后台消费者，处理事件总线异步任务",
+      "evidence": [
+        {
+          "file": "test/apps/worker/src/worker.ts",
+          "startLine": 10,
+          "endLine": 42,
+          "symbol": "startWorker"
+        }
+      ],
+      "inferred": false
+    },
+    {
+      "id": "module:modules/booking",
+      "name": "booking",
+      "kind": "module",
+      "path": "test/modules/booking",
+      "domain": "modules",
+      "summary": "预订编排：库存校验、下单、与支付协同",
+      "evidence": [
+        {
+          "file": "test/modules/booking/src/create-booking.ts",
+          "startLine": 18,
+          "endLine": 56,
+          "symbol": "createBooking"
+        }
+      ],
+      "inferred": false
+    },
+    {
+      "id": "submodule:modules/booking/src/booking-policy.ts",
+      "name": "booking-policy",
+      "kind": "submodule",
+      "path": "test/modules/booking/src/booking-policy.ts",
+      "domain": "modules",
+      "parentId": "module:modules/booking",
+      "summary": "预订规则校验，集中处理库存与状态约束",
+      "evidence": [
+        {
+          "file": "test/modules/booking/src/booking-policy.ts",
+          "startLine": 1
+        }
+      ],
+      "inferred": false
+    },
+    {
+      "id": "submodule:modules/booking/src/booking-repository.ts",
+      "name": "booking-repository",
+      "kind": "submodule",
+      "path": "test/modules/booking/src/booking-repository.ts",
+      "domain": "modules",
+      "parentId": "module:modules/booking",
+      "summary": "预订数据访问接口，隔离业务逻辑与持久化实现",
+      "evidence": [
+        {
+          "file": "test/modules/booking/src/booking-repository.ts",
+          "startLine": 1
+        }
+      ],
+      "inferred": false
+    },
+    {
+      "id": "submodule:modules/booking/src/create-booking.ts",
+      "name": "create-booking",
+      "kind": "submodule",
+      "path": "test/modules/booking/src/create-booking.ts",
+      "domain": "modules",
+      "parentId": "module:modules/booking",
+      "summary": "下单用例编排，串联校验、保存、支付与事件发布",
+      "evidence": [
+        {
+          "file": "test/modules/booking/src/create-booking.ts",
+          "startLine": 18,
+          "symbol": "createBooking"
+        }
+      ],
+      "inferred": false
+    },
+    {
+      "id": "module:modules/catalog",
+      "name": "catalog",
+      "kind": "module",
+      "path": "test/modules/catalog",
+      "domain": "modules",
+      "summary": "活动与场次目录，读多写少带缓存",
+      "evidence": [
+        {
+          "file": "test/modules/catalog/src/list-events.ts",
+          "startLine": 9,
+          "endLine": 38,
+          "symbol": "listEvents"
+        }
+      ],
+      "inferred": false
+    },
+    {
+      "id": "module:modules/identity",
+      "name": "identity",
+      "kind": "module",
+      "path": "test/modules/identity",
+      "domain": "modules",
+      "summary": "用户身份、会话与权限判定",
+      "evidence": [
+        {
+          "file": "test/modules/identity/src/authorization-service.ts",
+          "startLine": 7,
+          "endLine": 40,
+          "symbol": "AuthorizationService"
+        }
+      ],
+      "inferred": false
+    },
+    {
+      "id": "module:modules/payment",
+      "name": "payment",
+      "kind": "module",
+      "path": "test/modules/payment",
+      "domain": "modules",
+      "summary": "支付网关适配与交易状态机",
+      "evidence": [
+        {
+          "file": "test/modules/payment/src/start-payment.ts",
+          "startLine": 14,
+          "endLine": 52,
+          "symbol": "startPayment"
+        }
+      ],
+      "inferred": false
+    },
+    {
+      "id": "module:modules/notification",
+      "name": "notification",
+      "kind": "module",
+      "path": "test/modules/notification",
+      "domain": "modules",
+      "summary": "事件驱动通知投递，订阅领域事件",
+      "evidence": [
+        {
+          "file": "test/modules/notification/src/send-booking-confirmation.ts",
+          "startLine": 11,
+          "endLine": 44,
+          "symbol": "sendBookingConfirmation"
+        }
+      ],
+      "inferred": false
+    },
+    {
+      "id": "module:modules/reporting",
+      "name": "reporting",
+      "kind": "module",
+      "path": "test/modules/reporting",
+      "domain": "modules",
+      "summary": "聚合报表查询，直读数据库并缓存",
+      "evidence": [
+        {
+          "file": "test/modules/reporting/src/get-dashboard-stats.ts",
+          "startLine": 10,
+          "endLine": 46,
+          "symbol": "getDashboardStats"
+        }
+      ],
+      "inferred": false
+    },
+    {
+      "id": "module:packages/contracts",
+      "name": "contracts",
+      "kind": "module",
+      "path": "test/packages/contracts",
+      "domain": "packages",
+      "summary": "跨模块共享类型契约与事件定义",
+      "evidence": [
+        {
+          "file": "test/packages/contracts/src/index.ts",
+          "startLine": 1,
+          "endLine": 24
+        }
+      ],
+      "inferred": false
+    },
+    {
+      "id": "module:packages/database",
+      "name": "database",
+      "kind": "module",
+      "path": "test/packages/database",
+      "domain": "packages",
+      "summary": "连接池、迁移与仓储基类",
+      "evidence": [
+        {
+          "file": "test/packages/database/src/pool.ts",
+          "startLine": 6,
+          "endLine": 40,
+          "symbol": "createPool"
+        }
+      ],
+      "inferred": false
+    },
+    {
+      "id": "module:packages/event-bus",
+      "name": "event-bus",
+      "kind": "module",
+      "path": "test/packages/event-bus",
+      "domain": "packages",
+      "summary": "发布订阅抽象，解耦模块通信",
+      "evidence": [
+        {
+          "file": "test/packages/event-bus/src/index.ts",
+          "startLine": 1,
+          "endLine": 20
+        }
+      ],
+      "inferred": false
+    },
+    {
+      "id": "module:packages/cache",
+      "name": "cache",
+      "kind": "module",
+      "path": "test/packages/cache",
+      "domain": "packages",
+      "summary": "读缓存封装，带失效策略",
+      "evidence": [
+        {
+          "file": "test/packages/cache/src/index.ts",
+          "startLine": 1,
+          "endLine": 18
+        }
+      ],
+      "inferred": false
+    },
+    {
+      "id": "module:packages/shared",
+      "name": "shared",
+      "kind": "module",
+      "path": "test/packages/shared",
+      "domain": "packages",
+      "summary": "基础工具、错误类型与日志",
+      "evidence": [
+        {
+          "file": "test/packages/shared/src/index.ts",
+          "startLine": 1,
+          "endLine": 16
+        }
+      ],
+      "inferred": false
+    },
+    {
+      "id": "infra:postgres",
+      "name": "PostgreSQL",
+      "kind": "infra.db",
+      "path": null,
+      "domain": "infra",
+      "summary": "主数据库（PostgreSQL）",
+      "evidence": [],
+      "inferred": false
+    },
+    {
+      "id": "infra:redis",
+      "name": "Redis",
+      "kind": "infra.redis",
+      "path": null,
+      "domain": "infra",
+      "summary": "缓存 / 会话存储",
+      "evidence": [],
+      "inferred": false
+    },
+    {
+      "id": "infra:mq",
+      "name": "Message Queue",
+      "kind": "infra.mq",
+      "path": null,
+      "domain": "infra",
+      "summary": "消息队列（事件总线后端）",
+      "evidence": [],
+      "inferred": false
+    }
+  ],
+  "edges": [
+    {
+      "id": "e:module:apps/web->module:apps/api:call",
+      "source": "module:apps/web",
+      "target": "module:apps/api",
+      "type": "call",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/apps/web/src/api/client.ts",
+          "startLine": 12,
+          "symbol": "apiClient"
+        }
+      ]
+    },
+    {
+      "id": "e:module:apps/api->module:modules/booking:call",
+      "source": "module:apps/api",
+      "target": "module:modules/booking",
+      "type": "call",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/apps/api/src/routes/bookings.ts",
+          "startLine": 14,
+          "symbol": "registerBookingRoutes"
+        }
+      ]
+    },
+    {
+      "id": "e:module:modules/booking->submodule:modules/booking/src/booking-policy.ts:contains",
+      "source": "module:modules/booking",
+      "target": "submodule:modules/booking/src/booking-policy.ts",
+      "type": "contains",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/modules/booking/src/booking-policy.ts",
+          "startLine": 1
+        }
+      ]
+    },
+    {
+      "id": "e:module:modules/booking->submodule:modules/booking/src/booking-repository.ts:contains",
+      "source": "module:modules/booking",
+      "target": "submodule:modules/booking/src/booking-repository.ts",
+      "type": "contains",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/modules/booking/src/booking-repository.ts",
+          "startLine": 1
+        }
+      ]
+    },
+    {
+      "id": "e:module:modules/booking->submodule:modules/booking/src/create-booking.ts:contains",
+      "source": "module:modules/booking",
+      "target": "submodule:modules/booking/src/create-booking.ts",
+      "type": "contains",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/modules/booking/src/create-booking.ts",
+          "startLine": 18,
+          "symbol": "createBooking"
+        }
+      ]
+    },
+    {
+      "id": "e:module:apps/api->module:modules/catalog:call",
+      "source": "module:apps/api",
+      "target": "module:modules/catalog",
+      "type": "call",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/apps/api/src/routes/events.ts",
+          "startLine": 11,
+          "symbol": "registerEventRoutes"
+        }
+      ]
+    },
+    {
+      "id": "e:module:apps/api->module:modules/identity:call",
+      "source": "module:apps/api",
+      "target": "module:modules/identity",
+      "type": "call",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/apps/api/src/context.ts",
+          "startLine": 21,
+          "symbol": "buildContext"
+        }
+      ]
+    },
+    {
+      "id": "e:module:apps/api->module:modules/payment:call",
+      "source": "module:apps/api",
+      "target": "module:modules/payment",
+      "type": "call",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/apps/api/src/routes/payments.ts",
+          "startLine": 16,
+          "symbol": "registerPaymentRoutes"
+        }
+      ]
+    },
+    {
+      "id": "e:module:apps/api->module:modules/reporting:call",
+      "source": "module:apps/api",
+      "target": "module:modules/reporting",
+      "type": "call",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/apps/api/src/routes/reports.ts",
+          "startLine": 9,
+          "symbol": "registerReportRoutes"
+        }
+      ]
+    },
+    {
+      "id": "e:module:apps/worker->module:modules/notification:call",
+      "source": "module:apps/worker",
+      "target": "module:modules/notification",
+      "type": "call",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/apps/worker/src/handlers/domain-event-handler.ts",
+          "startLine": 18,
+          "symbol": "handleDomainEvent"
+        }
+      ]
+    },
+    {
+      "id": "e:module:apps/worker->module:packages/event-bus:consume",
+      "source": "module:apps/worker",
+      "target": "module:packages/event-bus",
+      "type": "consume",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/apps/worker/src/worker.ts",
+          "startLine": 24,
+          "symbol": "startWorker"
+        }
+      ]
+    },
+    {
+      "id": "e:module:modules/booking->module:modules/payment:call",
+      "source": "module:modules/booking",
+      "target": "module:modules/payment",
+      "type": "call",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/apps/api/src/adapters/booking-payment-adapter.ts",
+          "startLine": 24,
+          "symbol": "BookingPaymentAdapter"
+        }
+      ]
+    },
+    {
+      "id": "e:module:modules/booking->module:packages/contracts:dependency",
+      "source": "module:modules/booking",
+      "target": "module:packages/contracts",
+      "type": "dependency",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/modules/booking/src/booking.ts",
+          "startLine": 3
+        }
+      ]
+    },
+    {
+      "id": "e:module:modules/booking->module:packages/database:dependency",
+      "source": "module:modules/booking",
+      "target": "module:packages/database",
+      "type": "dependency",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/modules/booking/src/booking-repository.ts",
+          "startLine": 4
+        }
+      ]
+    },
+    {
+      "id": "e:module:modules/booking->module:packages/event-bus:publish",
+      "source": "module:modules/booking",
+      "target": "module:packages/event-bus",
+      "type": "publish",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/modules/booking/src/create-booking.ts",
+          "startLine": 44,
+          "symbol": "createBooking"
+        }
+      ]
+    },
+    {
+      "id": "e:module:modules/catalog->module:packages/database:dependency",
+      "source": "module:modules/catalog",
+      "target": "module:packages/database",
+      "type": "dependency",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/modules/catalog/src/event-repository.ts",
+          "startLine": 3
+        }
+      ]
+    },
+    {
+      "id": "e:module:modules/catalog->module:packages/cache:dependency",
+      "source": "module:modules/catalog",
+      "target": "module:packages/cache",
+      "type": "dependency",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/modules/catalog/src/list-events.ts",
+          "startLine": 6
+        }
+      ]
+    },
+    {
+      "id": "e:module:modules/catalog->module:packages/contracts:dependency",
+      "source": "module:modules/catalog",
+      "target": "module:packages/contracts",
+      "type": "dependency",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/modules/catalog/src/get-event.ts",
+          "startLine": 2
+        }
+      ]
+    },
+    {
+      "id": "e:module:modules/identity->module:packages/database:dependency",
+      "source": "module:modules/identity",
+      "target": "module:packages/database",
+      "type": "dependency",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/modules/identity/src/user-repository.ts",
+          "startLine": 3
+        }
+      ]
+    },
+    {
+      "id": "e:module:modules/identity->module:packages/contracts:dependency",
+      "source": "module:modules/identity",
+      "target": "module:packages/contracts",
+      "type": "dependency",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/modules/identity/src/user.ts",
+          "startLine": 2
+        }
+      ]
+    },
+    {
+      "id": "e:module:modules/payment->module:packages/contracts:dependency",
+      "source": "module:modules/payment",
+      "target": "module:packages/contracts",
+      "type": "dependency",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/modules/payment/src/payment.ts",
+          "startLine": 2
+        }
+      ]
+    },
+    {
+      "id": "e:module:modules/payment->module:packages/database:dependency",
+      "source": "module:modules/payment",
+      "target": "module:packages/database",
+      "type": "dependency",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/modules/payment/src/payment-repository.ts",
+          "startLine": 3
+        }
+      ]
+    },
+    {
+      "id": "e:module:modules/notification->module:packages/contracts:dependency",
+      "source": "module:modules/notification",
+      "target": "module:packages/contracts",
+      "type": "dependency",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/modules/notification/src/notification-sender.ts",
+          "startLine": 2
+        }
+      ]
+    },
+    {
+      "id": "e:module:modules/notification->module:packages/event-bus:consume",
+      "source": "module:modules/notification",
+      "target": "module:packages/event-bus",
+      "type": "consume",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/modules/notification/src/send-payment-receipt.ts",
+          "startLine": 9,
+          "symbol": "sendPaymentReceipt"
+        }
+      ]
+    },
+    {
+      "id": "e:module:modules/reporting->module:packages/database:dependency",
+      "source": "module:modules/reporting",
+      "target": "module:packages/database",
+      "type": "dependency",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/modules/reporting/src/report-repository.ts",
+          "startLine": 3
+        }
+      ]
+    },
+    {
+      "id": "e:module:modules/reporting->module:packages/cache:dependency",
+      "source": "module:modules/reporting",
+      "target": "module:packages/cache",
+      "type": "dependency",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/modules/reporting/src/daily-stats.ts",
+          "startLine": 5
+        }
+      ]
+    },
+    {
+      "id": "e:module:packages/cache->module:packages/shared:dependency",
+      "source": "module:packages/cache",
+      "target": "module:packages/shared",
+      "type": "dependency",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/packages/cache/src/redis-client.ts",
+          "startLine": 4
+        }
+      ]
+    },
+    {
+      "id": "e:module:packages/database->module:packages/shared:dependency",
+      "source": "module:packages/database",
+      "target": "module:packages/shared",
+      "type": "dependency",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/packages/database/src/pool.ts",
+          "startLine": 5
+        }
+      ]
+    },
+    {
+      "id": "e:module:packages/event-bus->module:packages/contracts:dependency",
+      "source": "module:packages/event-bus",
+      "target": "module:packages/contracts",
+      "type": "dependency",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/packages/event-bus/src/event-publisher.ts",
+          "startLine": 2
+        }
+      ]
+    },
+    {
+      "id": "e:module:packages/database->infra:postgres:write",
+      "source": "module:packages/database",
+      "target": "infra:postgres",
+      "type": "write",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/packages/database/src/pool.ts",
+          "startLine": 12,
+          "symbol": "createPool"
+        }
+      ]
+    },
+    {
+      "id": "e:module:packages/cache->infra:redis:read",
+      "source": "module:packages/cache",
+      "target": "infra:redis",
+      "type": "read",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/packages/cache/src/redis-client.ts",
+          "startLine": 9,
+          "symbol": "createRedisClient"
+        }
+      ]
+    },
+    {
+      "id": "e:module:packages/event-bus->infra:mq:publish",
+      "source": "module:packages/event-bus",
+      "target": "infra:mq",
+      "type": "publish",
+      "inferred": false,
+      "evidence": [
+        {
+          "file": "test/packages/event-bus/src/redis-event-bus.ts",
+          "startLine": 14,
+          "symbol": "RedisEventBus"
+        }
+      ]
+    },
+    {
+      "id": "e:module:modules/booking->module:modules/notification:publish",
+      "source": "module:modules/booking",
+      "target": "module:modules/notification",
+      "type": "publish",
+      "inferred": true,
+      "evidence": []
+    },
+    {
+      "id": "e:module:modules/payment->module:modules/notification:publish",
+      "source": "module:modules/payment",
+      "target": "module:modules/notification",
+      "type": "publish",
+      "inferred": true,
+      "evidence": []
+    }
+  ],
+  "views": [
+    {
+      "id": "overview",
+      "name": "总体架构",
+      "nodeIds": [
+        "module:apps/web",
+        "module:apps/api",
+        "module:apps/worker",
+        "module:modules/booking",
+        "module:modules/catalog",
+        "module:modules/identity",
+        "module:modules/payment",
+        "module:modules/notification",
+        "module:modules/reporting",
+        "module:packages/contracts",
+        "module:packages/database",
+        "module:packages/event-bus",
+        "module:packages/cache",
+        "module:packages/shared",
+        "infra:postgres",
+        "infra:redis",
+        "infra:mq"
+      ],
+      "edgeIds": [
+        "e:module:apps/web->module:apps/api:call",
+        "e:module:apps/api->module:modules/booking:call",
+        "e:module:apps/api->module:modules/catalog:call",
+        "e:module:apps/api->module:modules/identity:call",
+        "e:module:apps/api->module:modules/payment:call",
+        "e:module:apps/api->module:modules/reporting:call",
+        "e:module:apps/worker->module:modules/notification:call",
+        "e:module:apps/worker->module:packages/event-bus:consume",
+        "e:module:modules/booking->module:modules/payment:call",
+        "e:module:modules/booking->module:packages/contracts:dependency",
+        "e:module:modules/booking->module:packages/database:dependency",
+        "e:module:modules/booking->module:packages/event-bus:publish",
+        "e:module:modules/catalog->module:packages/database:dependency",
+        "e:module:modules/catalog->module:packages/cache:dependency",
+        "e:module:modules/catalog->module:packages/contracts:dependency",
+        "e:module:modules/identity->module:packages/database:dependency",
+        "e:module:modules/identity->module:packages/contracts:dependency",
+        "e:module:modules/payment->module:packages/contracts:dependency",
+        "e:module:modules/payment->module:packages/database:dependency",
+        "e:module:modules/notification->module:packages/contracts:dependency",
+        "e:module:modules/notification->module:packages/event-bus:consume",
+        "e:module:modules/reporting->module:packages/database:dependency",
+        "e:module:modules/reporting->module:packages/cache:dependency",
+        "e:module:packages/cache->module:packages/shared:dependency",
+        "e:module:packages/database->module:packages/shared:dependency",
+        "e:module:packages/event-bus->module:packages/contracts:dependency",
+        "e:module:packages/database->infra:postgres:write",
+        "e:module:packages/cache->infra:redis:read",
+        "e:module:packages/event-bus->infra:mq:publish",
+        "e:module:modules/booking->module:modules/notification:publish",
+        "e:module:modules/payment->module:modules/notification:publish"
+      ]
+    },
+    {
+      "id": "flow:place-booking",
+      "name": "下单流程",
+      "nodeIds": [
+        "module:apps/web",
+        "module:apps/api",
+        "module:modules/booking",
+        "module:modules/payment",
+        "module:packages/event-bus",
+        "infra:mq"
+      ],
+      "edgeIds": [
+        "e:module:apps/web->module:apps/api:call",
+        "e:module:apps/api->module:modules/booking:call",
+        "e:module:modules/booking->module:modules/payment:call",
+        "e:module:modules/booking->module:packages/event-bus:publish",
+        "e:module:packages/event-bus->infra:mq:publish"
+      ],
+      "steps": [
+        {
+          "order": 1,
+          "edgeId": "e:module:apps/web->module:apps/api:call",
+          "label": "提交预订表单"
+        },
+        {
+          "order": 2,
+          "edgeId": "e:module:apps/api->module:modules/booking:call",
+          "label": "路由进入预订编排"
+        },
+        {
+          "order": 3,
+          "edgeId": "e:module:modules/booking->module:modules/payment:call",
+          "label": "发起支付"
+        },
+        {
+          "order": 4,
+          "edgeId": "e:module:modules/booking->module:packages/event-bus:publish",
+          "label": "发布领域事件"
+        },
+        {
+          "order": 5,
+          "edgeId": "e:module:packages/event-bus->infra:mq:publish",
+          "label": "投递到消息队列"
+        }
+      ]
+    }
+  ],
+  "stats": {
+    "nodeCount": 20,
+    "edgeCount": 34,
+    "inferredCount": 2
+  }
+}

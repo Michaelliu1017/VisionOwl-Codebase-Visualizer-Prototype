@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>visionOwl · 方案 B · 图谱优先 + 玻璃浮层</title>
+<link rel="stylesheet" href="../../../skills/dark-glass-graph-ui/assets/dark-glass-graph-theme.css">
+<link rel="stylesheet" href="mockup.css">
+</head>
+<body>
+<div id="plan"></div>
+
+<div class="dgg-shell" style="height:calc(100vh - 29px)">
+  <div id="hdr"></div>
+
+  <div class="dgg-workspace vo-ws--b">
+    <div class="dgg-main" id="main"></div>
+  </div>
+</div>
+
+<script src="graph.js"></script>
+<script src="shell.js"></script>
+<script>
+  document.getElementById('plan').innerHTML = planBar('b');
+  document.getElementById('hdr').outerHTML = headerHTML({ hideTabs: true });
+
+  // 视图切换器与两个玻璃浮层都叠在满幅画布之上
+  const floatToolbar = `
+    <div class="vo-float vo-float--toolbar">
+      <div class="vo-float__surface">
+        <div class="vo-tab is-active">总体架构</div>
+        <div class="vo-tab">任务下发</div>
+        <div class="vo-tab">数据流向</div>
+        <div class="vo-tab">模块依赖</div>
+      </div>
+    </div>`;
+
+  const floatDetail = `
+    <div class="vo-float vo-float--detail">
+      <div class="vo-float__surface">
+        <div class="vo-float__head"><span>模块详情</span><span>✕</span></div>
+        <div class="vo-float__scroll" data-detail></div>
+      </div>
+    </div>`;
+
+  const floatAgent = `
+    <div class="vo-float vo-float--agent">
+      <div class="vo-float__surface">
+        <div class="vo-float__head"><span>Agent</span><span>—</span></div>
+        ${agentHTML({ head: false })}
+      </div>
+    </div>`;
+
+  document.getElementById('main').innerHTML =
+    canvasHTML(floatToolbar + floatDetail + floatAgent);
+  boot();
+</script>
+</body>
+</html>

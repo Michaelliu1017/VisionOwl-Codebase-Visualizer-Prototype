@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://visionowl.dev/contracts/skill-lab/skill-candidate.v1.schema.json",
+  "title": "VisionOwl Skill Candidate v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "projectId",
+    "candidateSkillId",
+    "candidateVersion",
+    "sourceRepository",
+    "sourceCommitSha",
+    "datasetId"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "skill-candidate.v1" },
+    "projectId": { "type": "string", "minLength": 1 },
+    "candidateSkillId": { "type": "string", "minLength": 1 },
+    "candidateVersion": { "type": "string", "minLength": 1 },
+    "artifactRef": { "type": "string" },
+    "checksum": { "type": "string" },
+    "sourceRepository": { "type": "string", "minLength": 1 },
+    "sourceCommitSha": { "type": "string", "minLength": 7 },
+    "datasetId": { "type": "string", "minLength": 1 },
+    "evidenceGraphVersion": { "type": ["string", "null"] },
+    "targetProfile": { "type": "object" },
+    "idempotencyKey": { "type": "string" }
+  }
+}
+

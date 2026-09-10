@@ -1,0 +1,537 @@
+/* visionOwl 布局方案原型 —— 共享原语
+ * 基于 skills/dark-glass-graph-ui/assets/dark-glass-graph-theme.css 的 token 扩展。
+ * 只补充主题未覆盖的布局与图谱定位，不重定义任何颜色值。
+ */
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--dgg-bg);
+  color: var(--dgg-text);
+  font-size: 12px;
+}
+
+/* ---------- 顶部 header ---------- */
+
+.vo-header__left,
+.vo-header__right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+}
+
+.vo-logo {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  background: var(--dgg-object);
+  border: 1px solid var(--dgg-line-strong);
+  display: grid;
+  place-items: center;
+  font-size: 11px;
+}
+
+.vo-project {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 9px;
+  border: 1px solid var(--dgg-line);
+  border-radius: var(--dgg-radius);
+  background: var(--dgg-object);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.vo-project__repo {
+  color: var(--dgg-faint);
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+}
+
+.vo-tabs { display: flex; gap: 2px; }
+
+.vo-tab {
+  height: 28px;
+  padding: 0 11px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: var(--dgg-radius);
+  color: var(--dgg-muted);
+  font-size: 11px;
+  cursor: pointer;
+  transition: color 160ms, background 160ms, border-color 160ms;
+}
+
+.vo-tab:hover { color: var(--dgg-text); background: var(--dgg-object); }
+
+.vo-tab.is-active {
+  color: var(--dgg-accent);
+  border-color: rgb(var(--dgg-accent-rgb) / 38%);
+  background: linear-gradient(
+      rgb(var(--dgg-accent-rgb) / 10%),
+      rgb(var(--dgg-accent-rgb) / 10%)
+    ), var(--dgg-object);
+}
+
+.vo-icon-btn {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--dgg-line);
+  border-radius: var(--dgg-radius);
+  background: var(--dgg-object);
+  color: var(--dgg-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.vo-icon-btn:hover { color: var(--dgg-text); background: var(--dgg-object-hover); }
+
+.vo-status {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: var(--dgg-faint);
+  font-family: ui-monospace, monospace;
+}
+
+.vo-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--dgg-accent);
+  box-shadow: 0 0 6px rgb(var(--dgg-accent-rgb) / 60%);
+  animation: vo-breathe 2s ease-in-out infinite;
+}
+
+@keyframes vo-breathe { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+/* ---------- 面板通用 ---------- */
+
+.vo-panel-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 34px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--dgg-line);
+  color: var(--dgg-muted);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  flex: 0 0 34px;
+}
+
+.vo-panel-body { padding: 12px; }
+
+/* ---------- 左侧模块树 ---------- */
+
+.vo-tree { padding: 8px 6px; }
+
+.vo-tree__group {
+  padding: 7px 8px 4px;
+  color: var(--dgg-faint);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.vo-tree__item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 26px;
+  padding: 0 8px;
+  border-radius: 4px;
+  color: var(--dgg-muted);
+  cursor: pointer;
+  font-size: 11.5px;
+}
+
+.vo-tree__item:hover { background: var(--dgg-object); color: var(--dgg-text); }
+
+.vo-tree__item.is-active {
+  background: linear-gradient(
+      rgb(var(--dgg-accent-rgb) / 12%),
+      rgb(var(--dgg-accent-rgb) / 12%)
+    ), var(--dgg-object);
+  color: var(--dgg-text);
+}
+
+.vo-tree__kind {
+  width: 5px;
+  height: 5px;
+  border-radius: 1px;
+  background: var(--dgg-edge);
+  flex: 0 0 5px;
+}
+
+.vo-tree__item.is-active .vo-tree__kind { background: var(--dgg-accent); }
+
+/* ---------- 图标 rail(方案 C) ---------- */
+
+.vo-rail {
+  width: 52px;
+  flex: 0 0 52px;
+  background: var(--dgg-surface);
+  border-right: 1px solid var(--dgg-line);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding-top: 8px;
+}
+
+.vo-rail__btn {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--dgg-radius);
+  color: var(--dgg-faint);
+  cursor: pointer;
+  font-size: 15px;
+}
+
+.vo-rail__btn:hover { background: var(--dgg-object); color: var(--dgg-text); }
+
+.vo-rail__btn.is-active {
+  color: var(--dgg-accent);
+  background: linear-gradient(
+      rgb(var(--dgg-accent-rgb) / 12%),
+      rgb(var(--dgg-accent-rgb) / 12%)
+    ), var(--dgg-object);
+}
+
+/* ---------- 详情面板 ---------- */
+
+.vo-detail__head { padding: 12px 12px 10px; border-bottom: 1px solid var(--dgg-line); }
+.vo-detail__name { font-size: 14px; font-weight: 600; }
+
+.vo-detail__path {
+  margin-top: 3px;
+  color: var(--dgg-faint);
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+}
+
+.vo-badge {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 2px 7px;
+  border: 1px solid var(--dgg-line-strong);
+  border-radius: 3px;
+  color: var(--dgg-muted);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.vo-kv { display: flex; justify-content: space-between; padding: 6px 0; font-size: 11.5px; }
+.vo-kv + .vo-kv { border-top: 1px solid var(--dgg-line); }
+.vo-kv__k { color: var(--dgg-faint); }
+.vo-kv__v { color: var(--dgg-text); font-family: ui-monospace, monospace; font-size: 10.5px; }
+
+.vo-section {
+  padding: 10px 12px 6px;
+  color: var(--dgg-faint);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.vo-dep {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  color: var(--dgg-muted);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.vo-dep:hover { background: var(--dgg-object); color: var(--dgg-text); }
+.vo-dep__arrow { color: var(--dgg-accent); font-size: 10px; }
+
+.vo-empty { padding: 22px 14px; color: var(--dgg-faint); font-size: 11.5px; line-height: 1.6; text-align: center; }
+
+/* ---------- Agent 面板 ---------- */
+
+.vo-agent { display: flex; flex-direction: column; min-height: 0; }
+.vo-agent__log { flex: 1; overflow: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+
+.vo-msg { max-width: 92%; font-size: 11.5px; line-height: 1.55; }
+.vo-msg__role { color: var(--dgg-faint); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+
+.vo-msg__body {
+  padding: 8px 10px;
+  border: 1px solid var(--dgg-line);
+  border-radius: var(--dgg-radius);
+  background: var(--dgg-object);
+  color: var(--dgg-text);
+}
+
+.vo-msg.is-user { align-self: flex-end; }
+.vo-msg.is-user .vo-msg__body { background: var(--dgg-surface); color: var(--dgg-muted); }
+
+.vo-msg.is-agent .vo-msg__body { border-color: rgb(var(--dgg-accent-rgb) / 22%); }
+
+.vo-msg__cite {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--dgg-line);
+  color: var(--dgg-faint);
+  font-family: ui-monospace, monospace;
+  font-size: 9.5px;
+}
+
+.vo-agent__input {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--dgg-line);
+}
+
+.vo-agent__field {
+  flex: 1;
+  height: 30px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--dgg-line-strong);
+  border-radius: var(--dgg-radius);
+  background: var(--dgg-bg);
+  color: var(--dgg-faint);
+  font-size: 11.5px;
+}
+
+.vo-agent__send {
+  height: 30px;
+  padding: 0 13px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgb(var(--dgg-accent-rgb) / 42%);
+  border-radius: var(--dgg-radius);
+  background: linear-gradient(
+      rgb(var(--dgg-accent-rgb) / 16%),
+      rgb(var(--dgg-accent-rgb) / 16%)
+    ), var(--dgg-object);
+  color: var(--dgg-accent);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.vo-agent__acts { display: flex; gap: 6px; padding: 0 12px 10px; flex-wrap: wrap; }
+
+.vo-chip {
+  padding: 4px 9px;
+  border: 1px solid var(--dgg-line);
+  border-radius: 999px;
+  background: var(--dgg-object);
+  color: var(--dgg-muted);
+  font-size: 10.5px;
+  cursor: pointer;
+}
+
+.vo-chip:hover { border-color: rgb(var(--dgg-accent-rgb) / 40%); color: var(--dgg-text); }
+
+/* ---------- 图谱画布与定位 ---------- */
+
+:root {
+  /* 为原型提高信息密度，缩小节点尺寸 token */
+  --dgg-node-width: 160px;
+  --dgg-node-height: 58px;
+}
+
+.vo-graph {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+}
+
+.vo-stage {
+  position: relative;
+  width: 740px;
+  height: 600px;
+  margin: 26px auto;
+}
+
+/* 边层在所有节点之下 */
+.vo-edges {
+  position: absolute;
+  inset: 0;
+  width: 740px;
+  height: 600px;
+  z-index: 1;
+  overflow: visible;
+}
+
+.vo-nodes { position: absolute; inset: 0; z-index: 10; }
+
+.vo-node-slot { position: absolute; }
+
+.vo-canvas-hint {
+  position: absolute;
+  left: 14px;
+  bottom: 12px;
+  z-index: 40;
+  color: var(--dgg-faint);
+  font-size: 10px;
+  font-family: ui-monospace, monospace;
+  pointer-events: none;
+}
+
+.vo-canvas-tools {
+  position: absolute;
+  right: 14px;
+  bottom: 12px;
+  z-index: 40;
+  display: flex;
+  gap: 5px;
+}
+
+/* ---------- 方案 B：浮层玻璃面板 ---------- */
+
+.vo-float {
+  position: absolute;
+  z-index: 30;
+  border-radius: 8px;
+  isolation: isolate;
+}
+
+.vo-float::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  border-radius: inherit;
+  background: rgb(43 48 43 / 86%);
+  backdrop-filter: blur(28px) saturate(70%);
+}
+
+.vo-float__surface {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid rgb(238 243 238 / 24%);
+  border-radius: inherit;
+  background:
+    linear-gradient(
+      145deg,
+      rgb(238 243 238 / 15%),
+      rgb(150 158 150 / 7%) 46%,
+      rgb(44 49 44 / 17%)
+    ),
+    rgb(69 75 69 / 72%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 15%),
+    0 10px 28px rgb(0 0 0 / 34%);
+  backdrop-filter: blur(18px) saturate(115%);
+}
+
+.vo-float--toolbar {
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+}
+
+.vo-float--toolbar .vo-float__surface {
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 7px;
+}
+
+.vo-float--detail { top: 58px; right: 16px; width: 296px; max-height: calc(100% - 92px); }
+.vo-float--agent  { right: 16px; bottom: 16px; width: 344px; height: 300px; }
+
+.vo-float__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex: 0 0 auto;
+  padding: 9px 11px;
+  border-bottom: 1px solid rgb(238 243 238 / 14%);
+  color: var(--dgg-text);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.vo-float__scroll { overflow: auto; min-height: 0; }
+
+/* ---------- 方案差异化 workspace 网格 ---------- */
+
+.vo-ws--a { grid-template-columns: 218px minmax(0, 1fr) 306px; }
+.vo-ws--b { grid-template-columns: minmax(0, 1fr); }
+.vo-ws--c { grid-template-columns: 52px minmax(0, 1fr) 322px; }
+.vo-ws--d { grid-template-columns: 366px minmax(0, 1fr); }
+
+/* 方案 A：底部 agent 坞 */
+.vo-dock {
+  flex: 0 0 196px;
+  min-height: 0;
+  border-top: 1px solid var(--dgg-line);
+  background: var(--dgg-surface);
+}
+
+/* 方案 C：右列垂直堆叠 */
+.vo-stack {
+  display: grid;
+  grid-template-rows: minmax(0, 1.1fr) minmax(0, 1fr);
+  min-height: 0;
+  background: var(--dgg-surface);
+  border-left: 1px solid var(--dgg-line);
+}
+
+.vo-stack > * { min-height: 0; overflow: auto; display: flex; flex-direction: column; }
+.vo-stack > * + * { border-top: 1px solid var(--dgg-line); }
+
+/* 方案 D：详情作为右侧推入层 */
+.vo-slideover {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  width: 308px;
+  display: flex;
+  flex-direction: column;
+  background: var(--dgg-surface);
+  border-left: 1px solid var(--dgg-line-strong);
+  box-shadow: -14px 0 34px rgb(0 0 0 / 42%);
+  overflow: auto;
+}
+
+/* 方案标识条 */
+.vo-plan-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 14px;
+  background: var(--dgg-deep);
+  border-bottom: 1px solid var(--dgg-line);
+  font-size: 11px;
+  color: var(--dgg-muted);
+}
+
+.vo-plan-bar strong { color: var(--dgg-accent); font-weight: 600; }
+.vo-plan-bar a { color: var(--dgg-faint); text-decoration: none; }
+.vo-plan-bar a:hover { color: var(--dgg-text); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}

@@ -1,0 +1,17 @@
+.git
+.gitignore
+.env
+.env.*
+.pytest_cache
+.skill-lab-state
+**/__pycache__
+**/*.py[cod]
+**/*.egg-info
+**/.DS_Store
+**/._*
+**/node_modules
+**/dist
+**/build
+**/*secret*
+**/*credential*
+**/*access-key*

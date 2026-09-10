@@ -1,0 +1,4 @@
+interface:
+  display_name: "VisionOwl Cross-Repo Analysis"
+  short_description: "Validate cross-repository links from explicit interfaces"
+  default_prompt: "Review cross-repository interface candidates and retain only links supported by bilateral evidence."

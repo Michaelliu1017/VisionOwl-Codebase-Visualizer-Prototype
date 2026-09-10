@@ -1,0 +1,15 @@
+{
+  "nodesByKind": {
+    "actor": 3,
+    "change_request": 1,
+    "ci_job": 2,
+    "ci_run": 2,
+    "comment": 3,
+    "commit": 2,
+    "file": 2,
+    "file_change": 3,
+    "repository": 1,
+    "review": 2
+  },
+  "pendingLinks": 0
+}

@@ -1,0 +1,31 @@
+{
+  "acceptedVersion": "0.1.0-opt.2",
+  "baselineDevelopmentScore": 25.0,
+  "baselineValidationScore": 25.0,
+  "finalScore": 100.0,
+  "rounds": [
+    {
+      "additions": [
+        "保持输入对象不可变",
+        "保证输出顺序稳定",
+        "执行完整测试"
+      ],
+      "decision": "rejected",
+      "developmentScore": 75.0,
+      "number": 1,
+      "validationScore": 75.0
+    },
+    {
+      "additions": [
+        "处理循环依赖",
+        "使用结构化错误"
+      ],
+      "decision": "accepted",
+      "developmentScore": 100.0,
+      "number": 2,
+      "validationScore": 100.0
+    }
+  ],
+  "status": "completed"
+}
+

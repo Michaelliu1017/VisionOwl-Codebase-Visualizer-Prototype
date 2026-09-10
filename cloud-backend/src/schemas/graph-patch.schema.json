@@ -1,0 +1,128 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://visionowl.dev/schemas/graph-patch-1.0.json",
+  "title": "VisionOwl graph-patch.json",
+  "type": "object",
+  "required": ["schemaVersion", "baseGraphVersion", "repositoryId", "commitSha", "generator", "skillVersion", "operations"],
+  "additionalProperties": false,
+  "properties": {
+    "schemaVersion": { "type": "string", "const": "1.0" },
+    "baseGraphVersion": { "type": "string", "minLength": 1 },
+    "repositoryId": { "type": "string", "minLength": 1 },
+    "commitSha": { "type": "string", "pattern": "^[0-9a-fA-F]{7,40}$" },
+    "generator": { "type": "string", "minLength": 1 },
+    "skillVersion": { "type": "string", "minLength": 1 },
+    "operations": {
+      "type": "array",
+      "maxItems": 2000,
+      "items": { "$ref": "#/definitions/operation" }
+    }
+  },
+  "definitions": {
+    "evidence": {
+      "type": "object",
+      "required": ["file"],
+      "additionalProperties": true,
+      "properties": {
+        "file": { "type": "string", "minLength": 1 },
+        "startLine": { "type": "integer", "minimum": 1 },
+        "endLine": { "type": "integer", "minimum": 1 },
+        "symbol": { "type": "string" },
+        "factId": { "type": "string" }
+      }
+    },
+    "operation": {
+      "type": "object",
+      "required": ["operationId", "op", "reason", "evidence", "confidence"],
+      "additionalProperties": false,
+      "properties": {
+        "operationId": { "type": "string", "minLength": 1 },
+        "op": {
+          "type": "string",
+          "enum": ["add_node", "add_edge", "replace_edge", "suppress_edge", "update_summary", "set_architecture", "add_view"]
+        },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "evidence": { "type": "array", "minItems": 1, "maxItems": 20, "items": { "$ref": "#/definitions/evidence" } },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "node": { "$ref": "#/definitions/node" },
+        "edge": { "$ref": "#/definitions/edge" },
+        "edgeId": { "type": "string" },
+        "nodeId": { "type": "string" },
+        "summary": { "type": "string", "maxLength": 4000 },
+        "architecture": { "$ref": "#/definitions/architecture" },
+        "view": { "$ref": "#/definitions/view" }
+      },
+      "allOf": [
+        { "if": { "properties": { "op": { "const": "add_node" } } }, "then": { "required": ["node"] } },
+        { "if": { "properties": { "op": { "const": "add_edge" } } }, "then": { "required": ["edge"] } },
+        { "if": { "properties": { "op": { "const": "replace_edge" } } }, "then": { "required": ["edgeId", "edge"] } },
+        { "if": { "properties": { "op": { "const": "suppress_edge" } } }, "then": { "required": ["edgeId"] } },
+        { "if": { "properties": { "op": { "const": "update_summary" } } }, "then": { "required": ["nodeId", "summary"] } },
+        { "if": { "properties": { "op": { "const": "set_architecture" } } }, "then": { "required": ["nodeId", "architecture"] } },
+        { "if": { "properties": { "op": { "const": "add_view" } } }, "then": { "required": ["view"] } }
+      ]
+    },
+    "architecture": {
+      "type": "object",
+      "required": ["role", "importance", "visibleByDefault"],
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "type": "string",
+          "enum": ["frontend", "backend", "worker", "executor", "data", "shared", "domain", "external"]
+        },
+        "importance": {
+          "type": "string",
+          "enum": ["primary", "supporting", "detail"]
+        },
+        "visibleByDefault": { "type": "boolean" },
+        "rationale": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "displayGroup": {
+          "type": "string",
+          "enum": ["client", "local-runtime", "cloud-runtime", "shared", "external"]
+        },
+        "groupLabel": { "type": "string", "minLength": 1, "maxLength": 80 }
+      }
+    },
+    "node": {
+      "type": "object",
+      "required": ["id", "name", "kind", "repositoryId"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "kind": {
+          "type": "string",
+          "enum": ["domain", "module", "submodule", "class", "function", "interface", "config", "infra.redis", "infra.mq", "infra.db", "external"]
+        },
+        "repositoryId": { "type": "string", "minLength": 1 }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "required": ["id", "source", "target", "type", "repositoryId"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "source": { "type": "string", "minLength": 1 },
+        "target": { "type": "string", "minLength": 1 },
+        "type": {
+          "type": "string",
+          "enum": ["call", "dependency", "read", "write", "publish", "consume", "implement", "contains"]
+        },
+        "repositoryId": { "type": "string", "minLength": 1 }
+      }
+    },
+    "view": {
+      "type": "object",
+      "required": ["id", "name", "nodeIds", "edgeIds"],
+      "additionalProperties": true,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "nodeIds": { "type": "array", "items": { "type": "string", "minLength": 1 } },
+        "edgeIds": { "type": "array", "items": { "type": "string", "minLength": 1 } }
+      }
+    }
+  }
+}
